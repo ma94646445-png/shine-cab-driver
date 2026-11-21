@@ -12,9 +12,10 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
-      - name: Install Dependencies and Sync Android
+      - name: Install, Build Web & Sync Android
         run: |
           npm install --legacy-peer-deps
+          npm run build
           npx cap sync android
       - name: Build Debug APK
         run: |
