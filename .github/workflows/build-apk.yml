@@ -7,15 +7,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
-      - name: Install, Build Web & Sync Android
+      - name: Install & Sync Capacitor Android
         run: |
           npm install --legacy-peer-deps
-          npm run build
           npx cap sync android
       - name: Build Debug APK
         run: |
