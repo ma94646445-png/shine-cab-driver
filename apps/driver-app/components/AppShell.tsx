@@ -40,6 +40,27 @@ const GROUPS: Array<(typeof SCREEN_DIRECTORY)[number]['group']> = [
   'Account & Safety',
 ];
 
+const LiveSpeedBadge: React.FC = () => {
+  const [kmh, setKmh] = React.useState(0);
+  React.useEffect(() => {
+    if (!navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        const sp = pos.coords.speed;
+        setKmh(typeof sp === "number" && sp > 0 ? Math.round(sp * 3.6) : 0);
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 2000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
+  return (
+    <div className="fixed left-3 bottom-24 z-40 rounded-2xl border border-[#FFC928]/40 bg-[#111111]/90 px-3 py-1.5 text-white shadow-lg flex items-baseline gap-1">
+      <span className="text-base font-extrabold text-[#FFC928]">{kmh}</span>
+      <span className="text-[10px] font-bold uppercase text-neutral-300">km/h</span>
+    </div>
+  );
+};
 export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const {
     currentScreen,
@@ -81,7 +102,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
       <div className="min-h-dvh w-full bg-[#090A0D] sm:flex sm:items-stretch sm:justify-center sm:py-3">
         <div className="flex min-h-dvh w-full flex-col bg-[#111111] text-white sm:mx-auto sm:min-h-[calc(100dvh-1.5rem)] sm:max-w-[430px] sm:overflow-hidden sm:rounded-[30px] sm:border sm:border-neutral-800 sm:shadow-2xl">
           {children}
-          <FeedbackToast />
+          <LiveSpeedBadge /><FeedbackToast />
         </div>
       </div>
     );

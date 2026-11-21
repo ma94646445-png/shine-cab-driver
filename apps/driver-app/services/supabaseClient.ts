@@ -182,82 +182,52 @@ export function getSupabaseClient(): any {
       from: (bucket: string) => ({
         async upload(path: string, file: Blob | File) {
           try {
-            const storageRef = ref(storage, `${bucket}/${path}`);
-            await uploadBytes(storageRef, file);
+            const dataUrl: string = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const res = String(reader.result || "");
+                if (!res.startsWith("data:image/")) {
+                  resolve(res);
+                  return;
+                }
+                const img = new Image();
+                img.onload = () => {
+                  const maxDim = 720;
+                  let w = img.width || 600;
+                  let h = img.height || 600;
+                  if (w > maxDim || h > maxDim) {
+                    if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                    else { w = Math.round((w * maxDim) / h); h = maxDim; }
+                  }
+                  const canvas = document.createElement("canvas");
+                  canvas.width = w;
+                  canvas.height = h;
+                  const ctx = canvas.getContext("2d");
+                  if (ctx) ctx.drawImage(img, 0, 0, w, h);
+                  resolve(canvas.toDataURL("image/jpeg", 0.72));
+                };
+                img.onerror = () => resolve(res);
+                img.src = res;
+              };
+              reader.onerror = () => reject(new Error("File read failed"));
+              reader.readAsDataURL(file);
+            });
+            (window as any).__shineUploadedUrls = (window as any).__shineUploadedUrls || {};
+            (window as any).__shineUploadedUrls[bucket + "/" + path] = dataUrl;
             return { data: { path }, error: null };
           } catch (error: any) {
             return { data: null, error };
           }
         },
         getPublicUrl(path: string) {
+          const map = (window as any).__shineUploadedUrls || {};
           return {
             data: {
-              publicUrl: `https://googleapis.com{encodeURIComponent(bucket + '/' + path)}?alt=media`,
+              publicUrl: map[bucket + "/" + path] || "",
             },
           };
         },
       }),
-    },
-    functions: {
-      async invoke(fnName: string, { body }: { body?: any } = {}) {
-        try {
-          if (fnName === 'accept-ride' && body?.rideId) {
-            await updateDoc(doc(db, 'rides', body.rideId), {
-              status: 'driver_assigned',
-              driver_id: body.driverId || auth.currentUser?.uid,
-              accepted_at: new Date().toISOString(),
-              updatedAt: serverTimestamp(),
-            });
-            const rSnap = await getDoc(doc(db, 'rides', body.rideId));
-            return { data: { ride: { id: rSnap.id, ...rSnap.data() } }, error: null };
-          }
-          if (fnName === 'verify-pickup-otp' && body?.rideId) {
-            await updateDoc(doc(db, 'rides', body.rideId), {
-              status: 'ride_started',
-              otp_verified: true,
-              started_at: new Date().toISOString(),
-              updatedAt: serverTimestamp(),
-            });
-            return { data: { verified: true }, error: null };
-          }
-          if (fnName === 'complete-ride' && body?.rideId) {
-            await updateDoc(doc(db, 'rides', body.rideId), {
-              status: 'ride_completed',
-              completed_at: new Date().toISOString(),
-              updatedAt: serverTimestamp(),
-            });
-            return { data: { completed: true }, error: null };
-          }
-          if (fnName === 'request-driver-payout') {
-            const pId = `payout_${Date.now()}`;
-            await setDoc(doc(db, 'payouts', pId), {
-              id: pId,
-              ...body,
-              status: 'pending',
-              created_at: new Date().toISOString(),
-            });
-            return { data: { id: pId, status: 'pending' }, error: null };
-          }
-          return { data: { ok: true }, error: null };
-        } catch (error: any) {
-          return { data: null, error };
-        }
-      },
-    },
-    async rpc(fnName: string, _params?: any) {
-      if (fnName === 'get_driver_earnings_summary') {
-        return {
-          data: {
-            today_earnings: 0,
-            week_earnings: 0,
-            month_earnings: 0,
-            total_rides: 0,
-            online_hours: 0,
-          },
-          error: null,
-        };
-      }
-      return { data: null, error: null };
     },
     auth: {
       async getUser() {
