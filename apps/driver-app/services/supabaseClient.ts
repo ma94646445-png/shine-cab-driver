@@ -300,3 +300,36 @@ export function getSupabaseClient(): any {
     },
   };
 }
+
+// Real-Time Incoming Rides & Live Driver GPS Telemetry Bridge
+(function initDriverRealtimeBridge() {
+  try {
+    onSnapshot(collection(db, 'rides'), (snap) => {
+      const rides = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      (window as any).__shineDriverLiveRides = rides;
+      window.dispatchEvent(new CustomEvent('shine-driver-rides-updated', { detail: rides }));
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        async (pos) => {
+          const u = auth.currentUser;
+          if (!u) return;
+          const payload = {
+            driver_id: u.uid,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            heading: pos.coords.heading || 0,
+            speed_kmh: pos.coords.speed && pos.coords.speed > 0 ? Math.round(pos.coords.speed * 3.6) : 0,
+            is_online: true,
+            updated_at: new Date().toISOString(),
+          };
+          await setDoc(doc(db, 'driver_locations', u.uid), payload, { merge: true }).catch(() => {});
+          await setDoc(doc(db, 'drivers', u.uid), { lat: payload.lat, lng: payload.lng, isOnline: true, updated_at: payload.updated_at }, { merge: true }).catch(() => {});
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 5000 }
+      );
+    }
+  } catch {}
+})();
