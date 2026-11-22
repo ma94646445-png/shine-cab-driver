@@ -5,7 +5,7 @@ import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBmhwmG-qcWl3sPXG8RFLCtvlfGzdcGG94",
-  authDomain: "://firebaseapp.com",
+  authDomain: "shine-cab.firebaseapp.com",
   projectId: "shine-cab",
   storageBucket: "shine-cab.firebasestorage.app",
   messagingSenderId: "887888438839",
