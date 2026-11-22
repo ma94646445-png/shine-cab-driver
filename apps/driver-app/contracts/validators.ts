@@ -44,8 +44,9 @@ export function canDriverGoOnline(
 }
 
 const VALID_RIDE_TRANSITIONS: Record<RideStatus, RideStatus[]> = {
-  requested: ['offered', 'cancelled'],
-  offered: ['accepted', 'cancelled'],
+  searching: ['offered', 'accepted', 'cancelled'],
+  requested: ['searching', 'offered', 'accepted', 'cancelled'],
+  offered: ['accepted', 'searching', 'cancelled'],
   accepted: ['arriving', 'arrived', 'cancelled'],
   arriving: ['arrived', 'cancelled'],
   arrived: ['in_progress', 'cancelled'],

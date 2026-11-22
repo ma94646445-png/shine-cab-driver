@@ -6,6 +6,7 @@ import type {
   EarningsSummary,
   GeoPoint,
   PayoutRecord,
+  RideMessageRecord,
   RideRecord,
   ServiceResult,
   SosAlertRecord,
@@ -64,8 +65,18 @@ export interface PayoutMethodPayload {
   ifsc_code?: string;
 }
 
+export interface SendRideMessagePayload {
+  ride_id: string;
+  driver_id: string;
+  customer_id: string;
+  sender_id: string;
+  sender_name: string;
+  text: string;
+}
+
 export interface DriverBackendContract {
   auth: {
+    signInWithGoogle(): Promise<ServiceResult<{ user_id: string; driver_id: string; email?: string | null; displayName?: string | null }>>;
     sendOtp(phone: string): Promise<ServiceResult<{ expiresInSeconds: number }>>;
     verifyOtp(phone: string, token: string): Promise<ServiceResult<{ user_id: string; driver_id: string }>>;
     signOut(): Promise<ServiceResult<void>>;
@@ -74,8 +85,18 @@ export interface DriverBackendContract {
     getProfile(): Promise<ServiceResult<DriverProfile | null>>;
     upsertProfile(payload: DriverRegistrationPayload): Promise<ServiceResult<DriverProfile>>;
     uploadAvatar(driverId: string, file: File): Promise<ServiceResult<DriverProfile>>;
-    setOnlineStatus(driverId: string, online: boolean, location?: GeoPoint): Promise<ServiceResult<DriverProfile>>;
-    updateLocation(driverId: string, location: GeoPoint): Promise<ServiceResult<void>>;
+    setOnlineStatus(
+      driverId: string,
+      online: boolean,
+      location?: GeoPoint,
+      vehicleCategory?: VehicleCategory
+    ): Promise<ServiceResult<DriverProfile>>;
+    updateLocation(
+      driverId: string,
+      location: GeoPoint,
+      isOnline?: boolean,
+      vehicleCategory?: VehicleCategory
+    ): Promise<ServiceResult<void>>;
   };
   vehicle: {
     getActiveVehicle(driverId: string): Promise<ServiceResult<VehicleRecord | null>>;
@@ -96,7 +117,7 @@ export interface DriverBackendContract {
       category: VehicleCategory,
       onOffer: (ride: RideRecord) => void
     ): () => void;
-    acceptRide(rideId: string, driverId: string): Promise<ServiceResult<AcceptRideResponse>>;
+    acceptRide(rideId: string, driverId: string, vehicleId?: string | null): Promise<ServiceResult<AcceptRideResponse>>;
     rejectRide(rideId: string, driverId: string, reason?: string): Promise<ServiceResult<void>>;
     markArrived(rideId: string, driverId: string): Promise<ServiceResult<RideRecord>>;
     verifyPickupOtp(payload: VerifyPickupOtpPayload): Promise<ServiceResult<RideRecord>>;
@@ -104,6 +125,8 @@ export interface DriverBackendContract {
     cancelRide(rideId: string, driverId: string, reason: string): Promise<ServiceResult<RideRecord>>;
     getActiveRide(driverId: string): Promise<ServiceResult<RideRecord | null>>;
     getRideHistory(driverId: string): Promise<ServiceResult<RideRecord[]>>;
+    subscribeMessages(rideId: string, onMessages: (messages: RideMessageRecord[]) => void): () => void;
+    sendMessage(payload: SendRideMessagePayload): Promise<ServiceResult<RideMessageRecord>>;
   };
   finance: {
     getEarnings(driverId: string, period: EarningsSummary['period']): Promise<ServiceResult<EarningsSummary>>;
@@ -111,6 +134,7 @@ export interface DriverBackendContract {
     updatePayoutMethod(driverId: string, payload: PayoutMethodPayload): Promise<ServiceResult<WalletAccount>>;
     getPayoutHistory(driverId: string): Promise<ServiceResult<PayoutRecord[]>>;
     requestPayout(driverId: string, amountInr: number): Promise<ServiceResult<PayoutRecord>>;
+    settleCashDues(driverId: string, amountInr: number): Promise<ServiceResult<WalletAccount>>;
   };
   account: {
     getRatings(driverId: string): Promise<ServiceResult<DriverRatingRecord[]>>;
@@ -127,5 +151,6 @@ export interface DriverBackendContract {
       rideId?: string
     ): Promise<ServiceResult<SupportTicket>>;
     triggerSos(driverId: string, rideId?: string, location?: GeoPoint): Promise<ServiceResult<SosAlertRecord>>;
+    subscribeSosAlerts(driverId: string, onAlerts: (alerts: SosAlertRecord[]) => void): () => void;
   };
 }

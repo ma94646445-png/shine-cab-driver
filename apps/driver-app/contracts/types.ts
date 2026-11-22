@@ -15,6 +15,7 @@ export type DriverAccountStatus =
   | 'rejected';
 
 export type RideStatus =
+  | 'searching'
   | 'requested'
   | 'offered'
   | 'accepted'
@@ -121,6 +122,7 @@ export interface DriverDocumentRecord {
   driver_id: string;
   document_type: DocumentType;
   storage_path: string;
+  file_url?: string | null;
   file_name: string;
   status: 'not_uploaded' | 'pending_review' | 'verified' | 'rejected';
   rejection_reason?: string | null;
@@ -165,12 +167,25 @@ export interface RideRecord {
   driver_net_inr?: number | null;
   payment_mode: PaymentMode;
   payment_status: 'pending' | 'paid' | 'failed';
+  pickup_otp?: string | null;
   pickup_otp_verified: boolean;
   offer_expires_at?: string | null;
   customer?: CustomerSummary;
   created_at: string;
   started_at?: string | null;
   completed_at?: string | null;
+}
+
+export interface RideMessageRecord {
+  message_id: string;
+  ride_id: string;
+  driver_id?: string | null;
+  customer_id?: string | null;
+  sender_id: string;
+  sender_role: 'driver' | 'customer' | 'admin';
+  sender_name: string;
+  text: string;
+  created_at: string;
 }
 
 export interface EarningsSummary {
@@ -193,6 +208,7 @@ export interface WalletAccount {
   cash_commission_due_inr: number;
   bank_account_verified: boolean;
   bank_account_masked?: string | null;
+  account_holder_name?: string | null;
   upi_id?: string | null;
   updated_at: string;
 }

@@ -89,7 +89,7 @@ export const PartnerWorkspaceGrid: React.FC<PartnerWorkspaceGridProps> = ({
       {
         screen: 'incoming_ride',
         label: 'Incoming Ride Queue',
-        detail: incomingOffer ? '1 Offer Waiting' : 'Realtime Dispatch',
+        detail: incomingOffer ? '1 Offer Waiting' : 'Firestore Live Dispatch',
         category: 'duty_trips',
         icon: Radio,
       },
@@ -103,14 +103,14 @@ export const PartnerWorkspaceGrid: React.FC<PartnerWorkspaceGridProps> = ({
       {
         screen: 'pickup_navigation',
         label: 'Pickup Navigation',
-        detail: activeRide ? 'Active Pickup' : 'GPS Route & ETA',
+        detail: activeRide ? 'Active Pickup' : 'OSM Route & Speed',
         category: 'duty_trips',
         icon: MapPin,
       },
       {
         screen: 'customer_details',
-        label: 'Customer Details',
-        detail: activeRide?.customer?.display_name || 'Rider Info & Call',
+        label: 'Customer Details & Chat',
+        detail: activeRide?.customer?.display_name || 'Rider Info & Chat',
         category: 'duty_trips',
         icon: UserCheck,
       },
@@ -144,7 +144,7 @@ export const PartnerWorkspaceGrid: React.FC<PartnerWorkspaceGridProps> = ({
       },
       {
         screen: 'wallet',
-        label: 'Wallet & Razorpay',
+        label: 'Wallet & Cash Dues',
         detail: wallet ? `₹${wallet.available_balance_inr.toFixed(0)} Bal` : 'Balance & Dues',
         category: 'finance_ratings',
         icon: Wallet,
@@ -182,7 +182,7 @@ export const PartnerWorkspaceGrid: React.FC<PartnerWorkspaceGridProps> = ({
       },
       {
         screen: 'login_otp',
-        label: 'Mobile OTP Login',
+        label: 'Google & OTP Login',
         detail: driverProfile ? 'Signed In' : 'Partner Sign-In',
         category: 'kyc_vehicle',
         icon: LogIn,
@@ -245,7 +245,7 @@ export const PartnerWorkspaceGrid: React.FC<PartnerWorkspaceGridProps> = ({
       },
       {
         screen: 'onboarding',
-        label: 'Language, City & Map',
+        label: 'Language, City & OSM',
         detail: '14 Indian Languages',
         category: 'account_safety',
         icon: Compass,
@@ -298,7 +298,7 @@ export const PartnerWorkspaceGrid: React.FC<PartnerWorkspaceGridProps> = ({
     <section className="space-y-3.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="font-display text-base font-bold text-[#111111] dark:text-white">
+          <h2 className="font-display text-base font-bold text-[#1E1E1E] dark:text-white">
             {title}
           </h2>
           {!compact && (
@@ -317,7 +317,7 @@ export const PartnerWorkspaceGrid: React.FC<PartnerWorkspaceGridProps> = ({
             onClick={() => setCategoryFilter(cat.id)}
             className={`min-h-[36px] shrink-0 rounded-xl border px-3 text-xs font-semibold transition-colors ${
               categoryFilter === cat.id
-                ? 'border-[#111111] bg-[#111111] text-white dark:border-[#FFC928] dark:bg-[#FFC928] dark:text-[#111111]'
+                ? 'border-[#1E1E1E] bg-[#1E1E1E] text-white dark:border-[#F5C518] dark:bg-[#F5C518] dark:text-[#1E1E1E]'
                 : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400 dark:border-neutral-800 dark:bg-[#14161A] dark:text-neutral-300'
             }`}
           >
@@ -336,8 +336,8 @@ export const PartnerWorkspaceGrid: React.FC<PartnerWorkspaceGridProps> = ({
             item.tone === 'danger'
               ? 'bg-red-600 text-white'
               : item.tone === 'brand' || isActive
-              ? 'bg-[#FFC928] text-[#111111]'
-              : 'bg-[#111111] text-[#FFC928] dark:bg-[#1B1E24] dark:text-[#FFC928]';
+              ? 'bg-[#F5C518] text-[#1E1E1E]'
+              : 'bg-[#1E1E1E] text-[#F5C518] dark:bg-[#1B1E24] dark:text-[#F5C518]';
 
           return (
             <button
@@ -346,8 +346,8 @@ export const PartnerWorkspaceGrid: React.FC<PartnerWorkspaceGridProps> = ({
               onClick={() => navigate(item.screen)}
               className={`group flex min-h-[88px] flex-col items-start justify-between rounded-2xl border p-3.5 text-left transition-colors ${
                 isActive
-                  ? 'border-[#FFC928] bg-[#FFC928]/10 dark:bg-[#FFC928]/10'
-                  : 'border-neutral-200 bg-white hover:border-[#111111] dark:border-neutral-800 dark:bg-[#14161A] dark:hover:border-[#FFC928]'
+                  ? 'border-[#F5C518] bg-[#F5C518]/10 dark:bg-[#F5C518]/10'
+                  : 'border-neutral-200 bg-white hover:border-[#1E1E1E] dark:border-neutral-800 dark:bg-[#14161A] dark:hover:border-[#F5C518]'
               }`}
             >
               <div className="flex w-full items-center justify-between gap-2">
@@ -357,14 +357,14 @@ export const PartnerWorkspaceGrid: React.FC<PartnerWorkspaceGridProps> = ({
                   <Icon className="h-[18px] w-[18px]" />
                 </span>
                 {item.screen === 'notifications' && unreadCount > 0 && (
-                  <span className="font-mono-num flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#FFC928] px-1.5 text-[10px] font-extrabold text-[#111111]">
+                  <span className="font-mono-num flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#F5C518] px-1.5 text-[10px] font-extrabold text-[#1E1E1E]">
                     {unreadCount}
                   </span>
                 )}
               </div>
 
               <div className="mt-2.5 w-full min-w-0">
-                <p className="truncate text-xs font-bold text-[#111111] dark:text-white">
+                <p className="truncate text-xs font-bold text-[#1E1E1E] dark:text-white">
                   {item.label}
                 </p>
                 <p className="truncate text-[11px] text-neutral-500 dark:text-neutral-400">

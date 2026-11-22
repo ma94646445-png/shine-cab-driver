@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 import type { IntegrationStatus } from '../contracts/integrations';
 import type {
   DocumentType,
@@ -24,8 +25,17 @@ import {
 } from '../i18n/translations';
 import { liveLocationAdapter } from '../services/adapters/locationAdapter';
 import { playRideOfferAlert } from '../services/adapters/soundAlert';
-import { getAllIntegrationStatuses, isSupabaseConfigured } from '../services/config';
-import { driverBackendService } from '../services/driverBackendService';
+import { getAllIntegrationStatuses, isFirebaseConfigured } from '../services/config';
+import {
+  computeEarningsFromRides,
+  driverBackendService,
+  subscribeDriverDocuments,
+  subscribeDriverProfile,
+  subscribeDriverRides,
+  subscribeWalletAccount,
+} from '../services/driverBackendService';
+import { getFirebaseAuth, testFirestoreConnection } from '../services/firebaseClient';
+import { compressFileToFirestoreDataUrl } from '../services/imageCompressor';
 
 export interface OnboardingDraft {
   phone: string;
@@ -56,7 +66,7 @@ export interface DispatchPreferences {
 
 export interface AppSettings {
   appLanguage: IndianLanguageCode;
-  preferredNavigationApp: 'google_maps' | 'in_app_gps';
+  preferredNavigationApp: 'in_app_gps' | 'google_maps';
   voiceGuidanceEnabled: boolean;
   highAccuracyGps: boolean;
   rideOfferRingtone: 'chime' | 'urgent_bell' | 'vibrate_only';
@@ -165,7 +175,7 @@ const DEFAULT_PREFERENCES: DispatchPreferences = {
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
   appLanguage: 'en',
-  preferredNavigationApp: 'google_maps',
+  preferredNavigationApp: 'in_app_gps',
   voiceGuidanceEnabled: true,
   highAccuracyGps: true,
   rideOfferRingtone: 'urgent_bell',
@@ -203,7 +213,6 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [lastCompletedRide, setLastCompletedRide] = useState<RideRecord | null>(null);
   const [incomingOffer, setIncomingOffer] = useState<RideRecord | null>(null);
   const [earningsPeriod, setEarningsPeriod] = useState<EarningsSummary['period']>('daily');
-  const [earnings, setEarnings] = useState<EarningsSummary | null>(null);
   const [wallet, setWallet] = useState<WalletAccount | null>(null);
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [rideHistory, setRideHistory] = useState<RideRecord[]>([]);
@@ -214,6 +223,9 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [locationError, setLocationError] = useState<string | null>(null);
   const [watchingGps, setWatchingGps] = useState(false);
   const lastLocationSyncRef = useRef<number>(0);
+  const activeRideRef = useRef<RideRecord | null>(null);
+  const incomingOfferRef = useRef<RideRecord | null>(null);
+
   const [onboardingDraft, setOnboardingDraft] = useState<OnboardingDraft>(DEFAULT_DRAFT);
   const [dispatchPreferences, setDispatchPreferences] = useState<DispatchPreferences>(() => {
     if (typeof window !== 'undefined') {
@@ -256,9 +268,22 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     ringtoneRef.current = appSettings.rideOfferRingtone;
   }, [appSettings.rideOfferRingtone]);
 
-  const backendConfigured = isSupabaseConfigured();
+  useEffect(() => {
+    activeRideRef.current = activeRide;
+  }, [activeRide]);
+
+  useEffect(() => {
+    incomingOfferRef.current = incomingOffer;
+  }, [incomingOffer]);
+
+  const backendConfigured = isFirebaseConfigured();
   const integrationStatuses = useMemo(() => getAllIntegrationStatuses(), []);
   const t = useMemo(() => getTranslations(appSettings.appLanguage), [appSettings.appLanguage]);
+
+  const earnings = useMemo(
+    () => (driverProfile ? computeEarningsFromRides(rideHistory, earningsPeriod) : null),
+    [driverProfile, rideHistory, earningsPeriod]
+  );
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -292,6 +317,20 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     }
   }, [appSettings]);
+
+  // Verify Firestore connection on mount
+  useEffect(() => {
+    if (backendConfigured) {
+      void testFirestoreConnection();
+    }
+  }, [backendConfigured]);
+
+  // Auto-enable live GPS watch when driver goes online
+  useEffect(() => {
+    if (driverProfile?.is_online) {
+      setWatchingGps(true);
+    }
+  }, [driverProfile?.is_online]);
 
   useEffect(() => {
     if (!watchingGps) return;
@@ -349,32 +388,29 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const uploadOrSetProfilePhoto = useCallback(
     async (file: File) => {
-      const reader = new FileReader();
-      const dataUrl = await new Promise<string | null>((resolve) => {
-        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(file);
-      });
-      if (dataUrl) {
-        setAvatarPreviewUrl(dataUrl);
+      try {
+        const compressedUrl = await compressFileToFirestoreDataUrl(file, {
+          maxDimension: 720,
+          quality: 0.75,
+        });
+        setAvatarPreviewUrl(compressedUrl);
         if (typeof window !== 'undefined') {
           try {
-            window.localStorage.setItem('shine_cab_driver_avatar_preview', dataUrl);
+            window.localStorage.setItem('shine_cab_driver_avatar_preview', compressedUrl);
           } catch {
-            // Ignore localStorage quota errors for large images; keep in-memory preview
+            // Keep in-memory preview
           }
         }
+      } catch {
+        // Fallback preview if compression couldn't decode image
       }
 
       if (!backendConfigured || !driverProfile) {
         setFeedback({
           type: 'info',
-          title: 'Photo Preview Updated Locally',
+          title: 'Photo Preview Ready',
           message:
-            'Your real photo is displayed in the header profile icon for this session. Sign in with Supabase connected to save it permanently to cloud storage.',
-          missingEnvVars: backendConfigured
-            ? undefined
-            : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+            'Your photo is compressed & ready. Sign in with Google or Phone OTP so it syncs permanently to Cloud Firestore & Super Admin.',
         });
         return;
       }
@@ -385,8 +421,8 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!res.ok) {
         setFeedback({
           type: 'error',
-          title: 'Cloud Avatar Upload Failed',
-          message: res.error?.message || 'Could not upload profile photo to Supabase Storage.',
+          title: 'Firestore Photo Sync Failed',
+          message: res.error?.message || 'Could not save compressed profile photo to Firestore.',
         });
         return;
       }
@@ -395,8 +431,8 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
       setFeedback({
         type: 'success',
-        title: 'Driver Photo Updated',
-        message: 'Your real profile photo is now synced across your driver account.',
+        title: 'Driver Photo Synced Live',
+        message: 'Compressed photo saved directly in Firestore and visible to Super Admin.',
       });
     },
     [backendConfigured, driverProfile]
@@ -444,7 +480,6 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setActiveRide(null);
     setLastCompletedRide(null);
     setIncomingOffer(null);
-    setEarnings(null);
     setWallet(null);
     setPayouts([]);
     setRideHistory([]);
@@ -460,27 +495,21 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return;
     }
 
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) {
+      clearSessionData();
+      return;
+    }
+
     setLoading(true);
     try {
       const profileRes = await driverBackendService.driver.getProfile();
-      if (!profileRes.ok) {
+      if (!profileRes.ok || !profileRes.data) {
         clearSessionData();
-        if (profileRes.error) {
-          setFeedback({
-            type: 'info',
-            title: 'Session Required',
-            message: profileRes.error.message,
-            missingEnvVars: profileRes.error.missingEnvVars,
-          });
-        }
         return;
       }
 
-      const profile = profileRes.data ?? null;
-      if (!profile) {
-        clearSessionData();
-        return;
-      }
+      const profile = profileRes.data;
       setDriverProfile(profile);
       setOnlineSince((prev) => (profile.is_online ? prev || new Date().toISOString() : null));
 
@@ -488,7 +517,6 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         vehRes,
         docsRes,
         activeRideRes,
-        earnRes,
         walletRes,
         payoutRes,
         historyRes,
@@ -499,7 +527,6 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         driverBackendService.vehicle.getActiveVehicle(profile.driver_id),
         driverBackendService.kyc.listDocuments(profile.driver_id),
         driverBackendService.rides.getActiveRide(profile.driver_id),
-        driverBackendService.finance.getEarnings(profile.driver_id, earningsPeriod),
         driverBackendService.finance.getWallet(profile.driver_id),
         driverBackendService.finance.getPayoutHistory(profile.driver_id),
         driverBackendService.rides.getRideHistory(profile.driver_id),
@@ -512,7 +539,6 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (vehRes.ok) setVehicle(activeVehicle);
       if (docsRes.ok && docsRes.data) setDocuments(docsRes.data);
       if (activeRideRes.ok) setActiveRide(activeRideRes.data ?? null);
-      if (earnRes.ok && earnRes.data) setEarnings(earnRes.data);
       if (walletRes.ok) setWallet(walletRes.data ?? null);
       if (payoutRes.ok && payoutRes.data) setPayouts(payoutRes.data);
       if (historyRes.ok && historyRes.data) setRideHistory(historyRes.data);
@@ -520,7 +546,6 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (notifRes.ok && notifRes.data) setNotifications(notifRes.data);
       if (ticketRes.ok && ticketRes.data) setSupportTickets(ticketRes.data);
 
-      // Hydrate empty draft fields from verified backend records so edit forms start pre-filled
       setOnboardingDraft((prev) => ({
         ...prev,
         phone: prev.phone || profile.phone.replace(/^\+91/, ''),
@@ -543,37 +568,106 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } finally {
       setLoading(false);
     }
-  }, [backendConfigured, clearSessionData, earningsPeriod]);
+  }, [backendConfigured, clearSessionData]);
 
+  // Bind Firebase Auth state listener
   useEffect(() => {
-    if (backendConfigured) {
-      void refreshDriverWorkspace();
-    }
-  }, [backendConfigured, refreshDriverWorkspace]);
+    if (!backendConfigured) return;
+    const auth = getFirebaseAuth();
+    if (!auth) return;
 
-  // Throttled live GPS coordinate sync to driver_locations while online/on-trip
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        void refreshDriverWorkspace();
+      } else {
+        clearSessionData();
+      }
+    });
+    return unsubAuth;
+  }, [backendConfigured, refreshDriverWorkspace, clearSessionData]);
+
+  // Real-time Firestore listeners for Profile, KYC Docs, Driver Rides, Wallet
+  useEffect(() => {
+    if (!backendConfigured || !driverProfile?.driver_id) return;
+    const driverId = driverProfile.driver_id;
+
+    const unsubProfile = subscribeDriverProfile(driverId, (updated) => {
+      if (updated) {
+        setDriverProfile(updated);
+        setOnlineSince((prev) => (updated.is_online ? prev || new Date().toISOString() : null));
+      }
+    });
+
+    const unsubDocs = subscribeDriverDocuments(driverId, (docs) => {
+      setDocuments(docs);
+    });
+
+    const unsubRides = subscribeDriverRides(driverId, (rides) => {
+      setRideHistory(rides);
+      const currentActive =
+        rides.find((r) => ['accepted', 'arriving', 'arrived', 'in_progress'].includes(r.status)) ?? null;
+      setActiveRide(currentActive);
+    });
+
+    const unsubWallet = subscribeWalletAccount(driverId, (w) => {
+      if (w) setWallet(w);
+    });
+
+    return () => {
+      unsubProfile();
+      unsubDocs();
+      unsubRides();
+      unsubWallet();
+    };
+  }, [backendConfigured, driverProfile?.driver_id]);
+
+  // Stream live GPS coordinates (lat, lng, heading, speed_kmh) to Firestore every 4s while Online
   useEffect(() => {
     if (!backendConfigured || !driverProfile?.is_online || !liveLocation) return;
     if (activeRide && !appSettings.shareLiveLocationOnTrip) return;
     const now = Date.now();
-    if (now - lastLocationSyncRef.current < 10000) return;
+    if (now - lastLocationSyncRef.current < 4000) return;
     lastLocationSyncRef.current = now;
-    void driverBackendService.driver.updateLocation(driverProfile.driver_id, liveLocation);
-  }, [backendConfigured, driverProfile?.driver_id, driverProfile?.is_online, liveLocation, activeRide, appSettings.shareLiveLocationOnTrip]);
+    void driverBackendService.driver.updateLocation(
+      driverProfile.driver_id,
+      liveLocation,
+      true,
+      vehicle?.category
+    );
+  }, [
+    backendConfigured,
+    driverProfile?.driver_id,
+    driverProfile?.is_online,
+    vehicle?.category,
+    liveLocation,
+    activeRide,
+    appSettings.shareLiveLocationOnTrip,
+  ]);
 
+  // Real-time Incoming Ride Offer listener
   useEffect(() => {
-    if (!backendConfigured || !driverProfile?.is_online || !vehicle?.category) return;
+    if (!backendConfigured || !driverProfile?.is_online) return;
+    const category = vehicle?.category || onboardingDraft.vehicleCategory || 'cab';
     const unsubscribe = driverBackendService.rides.subscribeOffers(
       driverProfile.driver_id,
-      vehicle.category,
+      category,
       (ride) => {
+        if (activeRideRef.current) return;
+        if (incomingOfferRef.current?.ride_id === ride.ride_id) return;
         playRideOfferAlert(ringtoneRef.current);
         setIncomingOffer(ride);
         navigate('incoming_ride');
       }
     );
     return unsubscribe;
-  }, [backendConfigured, driverProfile?.driver_id, driverProfile?.is_online, vehicle?.category, navigate]);
+  }, [
+    backendConfigured,
+    driverProfile?.driver_id,
+    driverProfile?.is_online,
+    vehicle?.category,
+    onboardingDraft.vehicleCategory,
+    navigate,
+  ]);
 
   // Auto-expire incoming ride offer if offer_expires_at has elapsed
   useEffect(() => {
@@ -590,6 +684,7 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return () => window.clearTimeout(timer);
   }, [incomingOffer]);
 
+  // Real-time Ratings listener
   useEffect(() => {
     if (!backendConfigured || !driverProfile?.driver_id) return;
     const unsubscribe = driverBackendService.account.subscribeRatings(
@@ -611,18 +706,12 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           setDriverProfile((cur) => (cur ? { ...cur, rating_average: avg } : cur));
           return updated;
         });
-        setFeedback({
-          type: 'info',
-          title: `New ${newRating.stars}★ Customer Rating Received`,
-          message: newRating.comment
-            ? `"${newRating.comment}"`
-            : 'Submitted via SHINE CAB Customer App.',
-        });
       }
     );
     return unsubscribe;
   }, [backendConfigured, driverProfile?.driver_id]);
 
+  // Real-time Notifications listener
   useEffect(() => {
     if (!backendConfigured || !driverProfile?.driver_id) return;
     const unsubscribe = driverBackendService.account.subscribeNotifications(
@@ -647,10 +736,8 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!backendConfigured) {
       setFeedback({
         type: 'error',
-        title: 'Backend Configuration Required',
-        message:
-          'Cannot toggle Online duty status without a connected SHINE CAPTAIN Supabase backend verifying admin approval.',
-        missingEnvVars: ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+        title: 'Firebase Configuration Required',
+        message: 'Check firebase-applet-config.json before going online.',
       });
       return;
     }
@@ -658,8 +745,8 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!driverProfile) {
       setFeedback({
         type: 'error',
-        title: 'Authentication Required',
-        message: 'Sign in and complete driver verification before going online.',
+        title: 'Sign-In Required',
+        message: 'Sign in with Google or Mobile OTP and complete KYC approval before going online.',
       });
       return;
     }
@@ -676,10 +763,12 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     setTogglingDuty(true);
     try {
+      const gps = nextOnline && !liveLocation ? await requestGpsFix() : liveLocation;
       const res = await driverBackendService.driver.setOnlineStatus(
         driverProfile.driver_id,
         nextOnline,
-        liveLocation ?? undefined
+        gps ?? undefined,
+        vehicle?.category
       );
       if (!res.ok) {
         setFeedback({
@@ -693,18 +782,26 @@ export const DriverAppProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (res.data) {
         setDriverProfile(res.data);
         setOnlineSince(res.data.is_online ? new Date().toISOString() : null);
+        if (!res.data.is_online && gps) {
+          void driverBackendService.driver.updateLocation(
+            res.data.driver_id,
+            gps,
+            false,
+            vehicle?.category
+          );
+        }
         setFeedback({
           type: 'success',
           title: res.data.is_online ? 'You are Online' : 'You are Offline',
           message: res.data.is_online
-            ? 'Listening for verified ride offers in your vehicle category.'
+            ? 'Live GPS & Firestore Dispatch Radar are active for your vehicle.'
             : 'Ride dispatch paused.',
         });
       }
     } finally {
       setTogglingDuty(false);
     }
-  }, [togglingDuty, backendConfigured, driverProfile, onlineEligibility, liveLocation]);
+  }, [togglingDuty, backendConfigured, driverProfile, onlineEligibility, liveLocation, requestGpsFix, vehicle?.category]);
 
   const value: DriverAppContextValue = {
     currentScreen,

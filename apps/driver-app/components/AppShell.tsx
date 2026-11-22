@@ -40,27 +40,6 @@ const GROUPS: Array<(typeof SCREEN_DIRECTORY)[number]['group']> = [
   'Account & Safety',
 ];
 
-const LiveSpeedBadge: React.FC = () => {
-  const [kmh, setKmh] = React.useState(0);
-  React.useEffect(() => {
-    if (!navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        const sp = pos.coords.speed;
-        setKmh(typeof sp === "number" && sp > 0 ? Math.round(sp * 3.6) : 0);
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 2000 }
-    );
-    return () => navigator.geolocation.clearWatch(id);
-  }, []);
-  return (
-    <div className="fixed left-3 bottom-24 z-40 rounded-2xl border border-[#FFC928]/40 bg-[#111111]/90 px-3 py-1.5 text-white shadow-lg flex items-baseline gap-1">
-      <span className="text-base font-extrabold text-[#FFC928]">{kmh}</span>
-      <span className="text-[10px] font-bold uppercase text-neutral-300">km/h</span>
-    </div>
-  );
-};
 export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const {
     currentScreen,
@@ -99,21 +78,21 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   if (isFullBleedAuth) {
     return (
-      <div className="min-h-dvh w-full bg-[#090A0D] sm:flex sm:items-stretch sm:justify-center sm:py-3">
-        <div className="flex min-h-dvh w-full flex-col bg-[#111111] text-white sm:mx-auto sm:min-h-[calc(100dvh-1.5rem)] sm:max-w-[430px] sm:overflow-hidden sm:rounded-[30px] sm:border sm:border-neutral-800 sm:shadow-2xl">
+      <div className="h-dvh w-full overflow-hidden bg-[#121212] sm:flex sm:items-stretch sm:justify-center sm:py-3">
+        <div className="flex h-dvh w-full flex-col overflow-y-auto overscroll-contain bg-[#1E1E1E] pt-[max(env(safe-area-inset-top),28px)] pb-[max(env(safe-area-inset-bottom),16px)] text-white sm:mx-auto sm:h-[calc(100dvh-1.5rem)] sm:max-w-[430px] sm:rounded-[30px] sm:border sm:border-neutral-800 sm:shadow-2xl">
           {children}
-          <LiveSpeedBadge /><FeedbackToast />
+          <FeedbackToast />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-dvh w-full bg-[#E8ECF2] text-[#111111] dark:bg-[#050608] dark:text-[#F5F5F7] sm:flex sm:items-stretch sm:justify-center sm:py-3">
-      {/* Mobile Phone App Viewport Container */}
-      <div className="relative flex min-h-dvh w-full flex-col bg-[#F6F7F9] dark:bg-[#0A0B0D] sm:mx-auto sm:min-h-[calc(100dvh-1.5rem)] sm:max-w-[430px] sm:overflow-x-clip sm:rounded-[30px] sm:border sm:border-neutral-300/80 sm:shadow-2xl dark:sm:border-neutral-800">
-        {/* Sticky Native Mobile App Header */}
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white/95 px-3 backdrop-blur-md dark:border-neutral-800 dark:bg-[#111317]/95 sm:rounded-t-[30px]">
+    <div className="h-dvh w-full overflow-hidden bg-[#E8ECF2] text-[#1E1E1E] dark:bg-[#0B0C0E] dark:text-[#F5F5F7] sm:flex sm:items-stretch sm:justify-center sm:py-3">
+      {/* Mobile Phone App Viewport Container (Strictly 100dvh with Android Safe Areas) */}
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-[#F6F7F9] dark:bg-[#121212] sm:mx-auto sm:h-[calc(100dvh-1.5rem)] sm:max-w-[430px] sm:rounded-[30px] sm:border sm:border-neutral-300/80 sm:shadow-2xl dark:sm:border-neutral-800">
+        {/* Sticky Native Mobile App Header with Android Status Bar Safe Padding */}
+        <header className="sticky top-0 z-30 flex min-h-[56px] shrink-0 items-center justify-between border-b border-neutral-200 bg-white/95 px-3 pt-[max(env(safe-area-inset-top),28px)] pb-2 backdrop-blur-md dark:border-neutral-800 dark:bg-[#1E1E1E]/95 sm:rounded-t-[30px]">
           <div className="flex min-w-0 items-center gap-1.5">
             {showBack ? (
               <>
@@ -121,7 +100,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
                   type="button"
                   onClick={goBack}
                   aria-label="Go back"
-                  className="flex min-h-[44px] min-w-[40px] shrink-0 items-center justify-center rounded-2xl text-neutral-700 active:scale-95 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                  className="flex min-h-[42px] min-w-[38px] shrink-0 items-center justify-center rounded-2xl text-neutral-700 active:scale-95 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </button>
@@ -132,10 +111,10 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 >
                   <BrandIcon size={26} className="shrink-0" />
                   <div className="min-w-0 leading-tight">
-                    <p className="truncate font-display text-[9px] font-extrabold tracking-widest text-amber-600 dark:text-[#FFC928]">
+                    <p className="truncate font-display text-[9px] font-extrabold tracking-widest text-amber-600 dark:text-[#F5C518]">
                       SHINE CAPTAIN
                     </p>
-                    <p className="truncate font-display text-xs font-bold text-[#111111] dark:text-white">
+                    <p className="truncate font-display text-xs font-bold text-[#1E1E1E] dark:text-white">
                       {SCREEN_TITLES[currentScreen]}
                     </p>
                   </div>
@@ -157,11 +136,11 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
               type="button"
               onClick={() => navigate('notifications')}
               aria-label="Notifications"
-              className="relative flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl text-neutral-700 active:scale-95 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              className="relative flex min-h-[40px] min-w-[40px] items-center justify-center rounded-2xl text-neutral-700 active:scale-95 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="font-mono-num absolute top-1.5 right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#FFC928] px-1 text-[10px] font-bold text-[#111111]">
+                <span className="font-mono-num absolute top-1 right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#F5C518] px-1 text-[10px] font-bold text-[#1E1E1E]">
                   {unreadCount}
                 </span>
               )}
@@ -170,7 +149,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
               type="button"
               onClick={() => navigate('emergency_sos')}
               aria-label="Emergency SOS"
-              className="flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl text-red-600 active:scale-95 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-2xl text-red-600 active:scale-95 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
             >
               <ShieldAlert className="h-4 w-4" />
             </button>
@@ -178,7 +157,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
               type="button"
               onClick={toggleTheme}
               aria-label="Toggle color theme"
-              className="flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl text-neutral-700 active:scale-95 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-2xl text-neutral-700 active:scale-95 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
             >
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
@@ -186,7 +165,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
               type="button"
               onClick={() => setDirectoryOpen(true)}
               aria-label="Open all screens directory"
-              className="flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl text-neutral-700 active:scale-95 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-2xl text-neutral-700 active:scale-95 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
             >
               <LayoutGrid className="h-4 w-4" />
             </button>
@@ -194,7 +173,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
               type="button"
               onClick={() => navigate('profile')}
               aria-label="Driver Profile & Photo"
-              className="flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl active:scale-95"
+              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-2xl active:scale-95"
             >
               {driverAvatarUrl ? (
                 <img
@@ -202,16 +181,16 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
                   alt={driverProfile?.full_name || 'Driver photo'}
                   className={`h-8 w-8 rounded-full object-cover ring-2 ${
                     currentScreen === 'profile'
-                      ? 'ring-[#111111] dark:ring-[#FFC928]'
-                      : 'ring-[#FFC928]'
+                      ? 'ring-[#1E1E1E] dark:ring-[#F5C518]'
+                      : 'ring-[#F5C518]'
                   }`}
                 />
               ) : (
                 <span
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-extrabold ${
                     currentScreen === 'profile'
-                      ? 'bg-[#FFC928] text-[#111111]'
-                      : 'bg-[#111111] text-[#FFC928] dark:bg-neutral-800'
+                      ? 'bg-[#F5C518] text-[#1E1E1E]'
+                      : 'bg-[#1E1E1E] text-[#F5C518] dark:bg-neutral-800'
                   }`}
                 >
                   {driverInitials || <User className="h-4 w-4" />}
@@ -222,17 +201,17 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
         </header>
 
         {/* Scrollable Mobile App Screen Canvas */}
-        <main className="flex-1 px-3.5 pt-3.5 pb-6">
+        <main className="flex-1 overflow-y-auto overscroll-contain px-3.5 pt-3.5 pb-6">
           {children}
           <footer className="mt-6 flex justify-center border-t border-neutral-200/70 pt-4 dark:border-neutral-800/80">
             <BrandLogo size="xs" showTagline className="opacity-85" />
           </footer>
         </main>
 
-        {/* Sticky Native Mobile Bottom Tab Bar */}
+        {/* Sticky Native Mobile Bottom Tab Bar with Android Bottom Safe Padding */}
         <nav
           aria-label="Driver Bottom Navigation"
-          className="sticky bottom-0 z-30 grid h-[64px] shrink-0 grid-cols-4 border-t border-neutral-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md dark:border-neutral-800 dark:bg-[#111317]/95 sm:rounded-b-[30px]"
+          className="sticky bottom-0 z-30 grid min-h-[64px] shrink-0 grid-cols-4 border-t border-neutral-200 bg-white/95 pt-1.5 pb-[max(env(safe-area-inset-bottom),16px)] backdrop-blur-md dark:border-neutral-800 dark:bg-[#1E1E1E]/95 sm:rounded-b-[30px]"
         >
           {BOTTOM_TAB_META.map((tab) => {
             const Icon = tab.icon;
@@ -244,13 +223,13 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 onClick={() => navigate(tab.id)}
                 className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-all active:scale-95 ${
                   active
-                    ? 'text-[#111111] dark:text-[#FFC928]'
+                    ? 'text-[#1E1E1E] dark:text-[#F5C518]'
                     : 'text-neutral-500 dark:text-neutral-400'
                 }`}
               >
                 <span
                   className={`flex h-7 w-12 items-center justify-center rounded-2xl transition-colors ${
-                    active ? 'bg-[#FFC928] text-[#111111]' : ''
+                    active ? 'bg-[#F5C518] text-[#1E1E1E]' : ''
                   }`}
                 >
                   <Icon className="h-[18px] w-[18px]" />
@@ -264,7 +243,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
         {/* Mobile Bottom Sheet: Full 28-Screen Directory */}
         {directoryOpen && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-xs">
-            <div className="max-h-[85vh] w-full max-w-[430px] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl dark:bg-[#14161A]">
+            <div className="max-h-[85dvh] w-full max-w-[430px] overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(env(safe-area-inset-bottom),24px)] shadow-2xl dark:bg-[#1E1E1E]">
               <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-neutral-300 dark:bg-neutral-700" />
               <div className="mb-4 flex items-center justify-between">
                 <div>
@@ -291,11 +270,11 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
                   onChange={(e) => setDirectorySearch(e.target.value)}
                   placeholder="Search any of 28 driver screens…"
                   aria-label="Search driver screens"
-                  className="min-h-[44px] w-full rounded-2xl border border-neutral-200 bg-neutral-50 pr-3.5 pl-10 text-xs font-medium text-[#111111] outline-none placeholder:text-neutral-400 focus:border-[#FFC928] dark:border-neutral-800 dark:bg-[#1A1D23] dark:text-white"
+                  className="min-h-[44px] w-full rounded-2xl border border-neutral-200 bg-neutral-50 pr-3.5 pl-10 text-xs font-medium text-[#1E1E1E] outline-none placeholder:text-neutral-400 focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#141518] dark:text-white"
                 />
               </div>
 
-              <div className="space-y-5 pb-6">
+              <div className="space-y-5 pb-4">
                 {GROUPS.map((group) => {
                   const items = filteredDirectory.filter((s) => s.group === group);
                   if (items.length === 0) return null;
@@ -315,8 +294,8 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             }}
                             className={`min-h-[44px] rounded-2xl border px-3 py-2 text-left text-xs font-medium transition-colors ${
                               currentScreen === item.id
-                                ? 'border-[#FFC928] bg-[#FFC928] font-semibold text-[#111111]'
-                                : 'border-neutral-200 bg-neutral-50 text-neutral-800 dark:border-neutral-800 dark:bg-[#1A1D23] dark:text-neutral-200'
+                                ? 'border-[#F5C518] bg-[#F5C518] font-semibold text-[#1E1E1E]'
+                                : 'border-neutral-200 bg-neutral-50 text-neutral-800 dark:border-neutral-700 dark:bg-[#141518] dark:text-neutral-200'
                             }`}
                           >
                             {item.label}

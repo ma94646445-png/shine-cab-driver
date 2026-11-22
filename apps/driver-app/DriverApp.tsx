@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppShell } from './components/AppShell';
+import { DriverErrorBoundary } from './components/ErrorBoundary';
 import {
   LoginOtpScreen,
   OnboardingScreen,
@@ -108,11 +109,13 @@ const ScreenRouter: React.FC = () => {
 };
 
 export const DriverApp: React.FC = () => (
-  <DriverAppProvider>
-    <AppShell>
-      <ScreenRouter />
-    </AppShell>
-  </DriverAppProvider>
+  <DriverErrorBoundary>
+    <DriverAppProvider>
+      <AppShell>
+        <ScreenRouter />
+      </AppShell>
+    </DriverAppProvider>
+  </DriverErrorBoundary>
 );
 
 export default DriverApp;

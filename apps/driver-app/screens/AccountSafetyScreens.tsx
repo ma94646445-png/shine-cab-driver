@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   Car,
@@ -30,10 +30,9 @@ import {
 import { BrandLogo } from '../branding/BrandLogo';
 import { PartnerWorkspaceGrid } from '../components/PartnerWorkspaceGrid';
 import { PhotoActionButtons } from '../components/PhotoCaptureControl';
-import type { ScreenId } from '../contracts/types';
+import type { ScreenId, SosAlertRecord } from '../contracts/types';
 import { PrimaryButton, StateNotice } from '../components/UiPrimitives';
 import { INDIAN_LANGUAGES, type IndianLanguageCode } from '../i18n/translations';
-import { pushNotificationAdapter } from '../services/adapters/externalAdapters';
 import { playRideOfferAlert } from '../services/adapters/soundAlert';
 import { driverBackendService } from '../services/driverBackendService';
 import { useDriverApp } from '../state/DriverAppContext';
@@ -61,7 +60,7 @@ const SettingToggleRow: React.FC<SettingToggleProps> = ({
 }) => (
   <div className="flex items-center justify-between gap-4 py-3.5">
     <div className="min-w-0">
-      <p className="text-sm font-semibold text-[#111111] dark:text-white">{title}</p>
+      <p className="text-sm font-semibold text-[#1E1E1E] dark:text-white">{title}</p>
       <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">{description}</p>
     </div>
     <button
@@ -71,11 +70,11 @@ const SettingToggleRow: React.FC<SettingToggleProps> = ({
       aria-label={title}
       onClick={onChange}
       className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
-        checked ? 'bg-[#FFC928]' : 'bg-neutral-300 dark:bg-neutral-700'
+        checked ? 'bg-[#F5C518]' : 'bg-neutral-300 dark:bg-neutral-700'
       }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-[#111111] transition-transform ${
+        className={`inline-block h-5 w-5 transform rounded-full bg-[#1E1E1E] transition-transform ${
           checked ? 'translate-x-6' : 'translate-x-1'
         }`}
       />
@@ -115,11 +114,10 @@ export const NotificationsScreen: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Obsidian Notifications Hero */}
-      <section className="rounded-3xl bg-[#111111] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
+      <section className="rounded-3xl bg-[#1E1E1E] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex flex-col gap-3.5">
           <div>
-            <p className="text-xs font-semibold tracking-wider text-[#FFC928]">
+            <p className="text-xs font-semibold tracking-wider text-[#F5C518]">
               SHINE CAPTAIN DISPATCH &amp; ACCOUNT INBOX
             </p>
             <div className="mt-2 flex items-baseline gap-2.5">
@@ -129,7 +127,7 @@ export const NotificationsScreen: React.FC = () => {
               <span className="text-xs font-medium text-neutral-400">Unread Notices</span>
             </div>
             <p className="mt-1 text-xs text-neutral-400">
-              KYC approvals, ride dispatches, payout settlements, and safety alerts
+              Live Firestore stream for KYC approvals, ride dispatches, payouts &amp; safety alerts
             </p>
           </div>
 
@@ -139,7 +137,7 @@ export const NotificationsScreen: React.FC = () => {
               onClick={() => void refreshDriverWorkspace()}
               disabled={loading}
               aria-label="Refresh notifications"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-700 bg-[#1B1E24] px-3.5 text-xs font-semibold text-white hover:border-neutral-500"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-700 bg-[#262626] px-3.5 text-xs font-semibold text-white hover:border-neutral-500"
             >
               <RefreshCw className={`mr-1.5 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
@@ -149,7 +147,7 @@ export const NotificationsScreen: React.FC = () => {
                 type="button"
                 disabled={markingAll}
                 onClick={() => void handleMarkAllRead()}
-                className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-[#FFC928] px-3.5 text-xs font-bold text-[#111111] disabled:opacity-50"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-[#F5C518] px-3.5 text-xs font-bold text-[#1E1E1E] disabled:opacity-50"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 {markingAll ? 'Updating…' : `Mark All Read (${unreadCount})`}
@@ -166,8 +164,8 @@ export const NotificationsScreen: React.FC = () => {
               onClick={() => setCategoryFilter(cat)}
               className={`min-h-[36px] rounded-lg px-3 text-xs font-semibold capitalize transition-colors ${
                 categoryFilter === cat
-                  ? 'bg-[#FFC928] text-[#111111]'
-                  : 'bg-[#1B1E24] text-neutral-300 hover:text-white'
+                  ? 'bg-[#F5C518] text-[#1E1E1E]'
+                  : 'bg-[#262626] text-neutral-300 hover:text-white'
               }`}
             >
               {cat}
@@ -176,21 +174,11 @@ export const NotificationsScreen: React.FC = () => {
         </div>
       </section>
 
-      {!pushNotificationAdapter.isConfigured() && (
-        <StateNotice
-          variant="unconfigured"
-          title="Firebase Cloud Messaging (Push) Not Configured"
-          description="Background push notifications require Firebase Web Push / FCM environment variables."
-          missingEnvVars={pushNotificationAdapter.getStatus().missingEnvVars}
-        />
-      )}
-
       {!backendConfigured || notifications.length === 0 ? (
         <StateNotice
           variant={backendConfigured ? 'empty' : 'unconfigured'}
           title={backendConfigured ? 'Inbox Empty' : 'Notification Feed Unconfigured'}
-          description="Real backend notifications from the shared notifications table appear here."
-          missingEnvVars={backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']}
+          description="Real-time Firestore notifications from ride dispatch, Super Admin KYC reviews, and payouts appear here automatically."
         />
       ) : filteredNotifications.length === 0 ? (
         <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center dark:border-neutral-800 dark:bg-[#14161A]">
@@ -207,11 +195,11 @@ export const NotificationsScreen: React.FC = () => {
               <div className="flex items-start gap-3">
                 <span
                   className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${
-                    n.read ? 'bg-neutral-300 dark:bg-neutral-700' : 'bg-[#FFC928]'
+                    n.read ? 'bg-neutral-300 dark:bg-neutral-700' : 'bg-[#F5C518]'
                   }`}
                 />
                 <div>
-                  <p className="text-sm font-semibold text-[#111111] dark:text-white">{n.title}</p>
+                  <p className="text-sm font-semibold text-[#1E1E1E] dark:text-white">{n.title}</p>
                   <p className="mt-0.5 text-xs text-neutral-600 dark:text-neutral-400">{n.body}</p>
                   <p className="font-mono-num mt-1.5 text-[11px] uppercase text-neutral-400">
                     {n.category} · {new Date(n.created_at).toLocaleString()}
@@ -223,7 +211,7 @@ export const NotificationsScreen: React.FC = () => {
                   type="button"
                   disabled={busyNotificationId === n.notification_id}
                   onClick={() => void handleMarkRead(n.notification_id)}
-                  className="min-h-[38px] shrink-0 rounded-xl border border-neutral-300 px-3 text-xs font-semibold hover:border-[#FFC928] disabled:opacity-50 dark:border-neutral-700"
+                  className="min-h-[38px] shrink-0 rounded-xl border border-neutral-300 px-3 text-xs font-semibold hover:border-[#F5C518] disabled:opacity-50 dark:border-neutral-700"
                 >
                   {busyNotificationId === n.notification_id ? 'Updating…' : 'Mark Read'}
                 </button>
@@ -292,7 +280,7 @@ export const ProfileScreen: React.FC = () => {
       setFeedback({
         type: 'info',
         title: 'Sign Out Unavailable',
-        message: res.error?.message || 'No active Supabase session.',
+        message: res.error?.message || 'No active Firebase partner session.',
       });
       return;
     }
@@ -376,18 +364,18 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* 1. OBSIDIAN PARTNER IDENTITY HERO */}
-      <section className="rounded-3xl bg-[#111111] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
+      {/* 1. DARK & GOLD PARTNER IDENTITY HERO */}
+      <section className="rounded-3xl bg-[#1E1E1E] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex flex-col gap-3.5">
           <div className="flex items-start gap-4">
             {driverAvatarUrl ? (
               <img
                 src={driverAvatarUrl}
                 alt={driverProfile?.full_name || 'Driver Profile Photo'}
-                className="h-16 w-16 shrink-0 rounded-2xl object-cover ring-2 ring-[#FFC928]"
+                className="h-16 w-16 shrink-0 rounded-2xl object-cover ring-2 ring-[#F5C518]"
               />
             ) : (
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#FFC928] text-xl font-extrabold text-[#111111]">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#F5C518] text-xl font-extrabold text-[#1E1E1E]">
                 {driverProfile?.full_name
                   ? driverProfile.full_name
                       .split(' ')
@@ -399,7 +387,7 @@ export const ProfileScreen: React.FC = () => {
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-xs font-semibold tracking-wider text-[#FFC928]">
+              <p className="text-xs font-semibold tracking-wider text-[#F5C518]">
                 SHINE CAPTAIN · ACCOUNT &amp; SETTINGS
               </p>
               <h1 className="font-display mt-1 truncate text-2xl font-extrabold tracking-tight text-white">
@@ -407,10 +395,10 @@ export const ProfileScreen: React.FC = () => {
               </h1>
               <p className="font-mono-num mt-1 text-xs text-neutral-400">
                 {driverProfile
-                  ? `${driverProfile.phone} · ${driverProfile.city} · ${
+                  ? `${driverProfile.phone || driverProfile.email || ''} · ${driverProfile.city} · ${
                       driverProfile.partner_rider_id || driverProfile.driver_id
                     }`
-                  : 'Upload your real photo below — it displays directly in the header profile icon'}
+                  : 'Upload your real photo below — synced straight to Super Admin KYC & Header'}
               </p>
             </div>
           </div>
@@ -419,12 +407,12 @@ export const ProfileScreen: React.FC = () => {
             <button
               type="button"
               onClick={toggleTheme}
-              className="flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-700 bg-[#1B1E24] px-3.5 text-xs font-semibold text-white hover:border-neutral-500"
+              className="flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-700 bg-[#262626] px-3.5 text-xs font-semibold text-white hover:border-neutral-500"
             >
               {theme === 'dark' ? (
-                <Sun className="h-4 w-4 text-[#FFC928]" />
+                <Sun className="h-4 w-4 text-[#F5C518]" />
               ) : (
-                <Moon className="h-4 w-4 text-[#FFC928]" />
+                <Moon className="h-4 w-4 text-[#F5C518]" />
               )}
               {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
             </button>
@@ -433,15 +421,14 @@ export const ProfileScreen: React.FC = () => {
               onClick={() => void refreshDriverWorkspace()}
               disabled={loading}
               aria-label="Refresh profile and settings"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-700 bg-[#1B1E24] text-white hover:border-neutral-500"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-700 bg-[#262626] text-white hover:border-neutral-500"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
-          {/* Quick Language Selection Dropdown inside Profile Hero */}
-          <label className="flex min-h-[44px] w-full items-center gap-2 rounded-xl border border-neutral-700 bg-[#1B1E24] px-3 text-xs">
-            <Globe className="h-4 w-4 shrink-0 text-[#FFC928]" />
+          <label className="flex min-h-[44px] w-full items-center gap-2 rounded-xl border border-neutral-700 bg-[#262626] px-3 text-xs">
+            <Globe className="h-4 w-4 shrink-0 text-[#F5C518]" />
             <span className="shrink-0 font-semibold text-neutral-300">App Language:</span>
             <select
               aria-label="Quick Profile Language Selector"
@@ -449,10 +436,10 @@ export const ProfileScreen: React.FC = () => {
               onChange={(e) =>
                 updateAppSettings({ appLanguage: e.target.value as IndianLanguageCode })
               }
-              className="w-full bg-transparent text-xs font-bold text-[#FFC928] outline-none"
+              className="w-full bg-transparent text-xs font-bold text-[#F5C518] outline-none"
             >
               {INDIAN_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code} className="bg-[#111111] text-white">
+                <option key={lang.code} value={lang.code} className="bg-[#1E1E1E] text-white">
                   {lang.nativeLabel} — {lang.englishName} ({lang.regionHint})
                 </option>
               ))}
@@ -461,13 +448,13 @@ export const ProfileScreen: React.FC = () => {
         </div>
 
         {/* Real Driver Photo Camera Click & Upload Controls */}
-        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-neutral-800 bg-[#1B1E24] p-3.5">
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-neutral-800 bg-[#262626] p-3.5">
           <div>
-            <p className="text-xs font-bold text-white">Driver Profile Photo (Header Avatar)</p>
+            <p className="text-xs font-bold text-white">Driver Profile Photo (Header &amp; KYC Avatar)</p>
             <p className="text-[11px] text-neutral-400">
               {driverAvatarUrl
-                ? 'Active real photo synced to Header Profile Icon & Partner Card'
-                : 'Capture via camera or upload from device gallery to display in Header'}
+                ? 'Compressed JPEG photo synced directly to Firestore drivers.avatar_url'
+                : 'Capture via camera or upload from device gallery to display in Header & Admin'}
             </p>
           </div>
           <div className="w-full space-y-2">
@@ -499,7 +486,7 @@ export const ProfileScreen: React.FC = () => {
             <p className="text-[11px] text-neutral-400">Account Status</p>
             <p
               className={`mt-0.5 text-sm font-bold capitalize ${
-                driverProfile?.admin_approved ? 'text-emerald-400' : 'text-[#FFC928]'
+                driverProfile?.admin_approved ? 'text-emerald-400' : 'text-[#F5C518]'
               }`}
             >
               {driverProfile
@@ -523,19 +510,19 @@ export const ProfileScreen: React.FC = () => {
           </div>
           <div>
             <p className="text-[11px] text-neutral-400">Partner Rider ID</p>
-            <p className="font-mono-num mt-0.5 truncate text-sm font-bold text-[#FFC928]">
+            <p className="font-mono-num mt-0.5 truncate text-sm font-bold text-[#F5C518]">
               {driverProfile?.partner_rider_id || 'Pending Admin Approval'}
             </p>
           </div>
         </div>
 
-        {/* KYC Authentication & 5-Gate Readiness Hub (Moved from Home into Profile) */}
+        {/* KYC Authentication & 5-Gate Readiness Hub */}
         <div className="mt-4 space-y-3 border-t border-neutral-800 pt-3.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-neutral-400">
               KYC &amp; Compliance Readiness
             </span>
-            <span className="font-mono-num text-xs font-bold text-[#FFC928]">
+            <span className="font-mono-num text-xs font-bold text-[#F5C518]">
               {verifiedGatesCount}/5 Gates
             </span>
           </div>
@@ -547,7 +534,7 @@ export const ProfileScreen: React.FC = () => {
                 title={`${check.label}: ${check.ok ? 'Verified' : 'Pending'}`}
                 onClick={() => navigate(check.screen)}
                 className={`h-2 flex-1 rounded-full transition-colors ${
-                  check.ok ? 'bg-[#FFC928]' : 'bg-neutral-700 hover:bg-neutral-500'
+                  check.ok ? 'bg-[#F5C518]' : 'bg-neutral-700 hover:bg-neutral-500'
                 }`}
               />
             ))}
@@ -557,7 +544,7 @@ export const ProfileScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('document_upload')}
-              className="rounded-xl border border-neutral-800 bg-[#1B1E24] p-2.5 hover:border-[#FFC928]"
+              className="rounded-xl border border-neutral-800 bg-[#262626] p-2.5 hover:border-[#F5C518]"
             >
               <p className="text-[10px] text-neutral-400">KYC Docs</p>
               <p className="font-mono-num mt-0.5 text-xs font-bold text-white">
@@ -567,7 +554,7 @@ export const ProfileScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('vehicle_details')}
-              className="rounded-xl border border-neutral-800 bg-[#1B1E24] p-2.5 hover:border-[#FFC928]"
+              className="rounded-xl border border-neutral-800 bg-[#262626] p-2.5 hover:border-[#F5C518]"
             >
               <p className="text-[10px] text-neutral-400">Insurance</p>
               <p className="font-mono-num mt-0.5 truncate text-xs font-bold text-white">
@@ -577,7 +564,7 @@ export const ProfileScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('vehicle_details')}
-              className="rounded-xl border border-neutral-800 bg-[#1B1E24] p-2.5 hover:border-[#FFC928]"
+              className="rounded-xl border border-neutral-800 bg-[#262626] p-2.5 hover:border-[#F5C518]"
             >
               <p className="text-[10px] text-neutral-400">RC Expiry</p>
               <p className="font-mono-num mt-0.5 truncate text-xs font-bold text-white">
@@ -587,15 +574,15 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {(!driverProfile || !onlineEligibility.allowed) && (
-            <div className="space-y-2.5 rounded-2xl border border-neutral-800 bg-[#1B1E24] p-3">
-              <p className="text-xs font-bold text-[#FFC928]">
+            <div className="space-y-2.5 rounded-2xl border border-neutral-800 bg-[#262626] p-3">
+              <p className="text-xs font-bold text-[#F5C518]">
                 {!driverProfile
                   ? 'Partner Sign-In & KYC Authentication'
                   : 'Approval Gates Remaining Before Duty'}
               </p>
               <p className="text-[11px] leading-relaxed text-neutral-300">
                 {!driverProfile
-                  ? 'Login with OTP or Sign Up to submit all 9 Driver & Vehicle documents and receive your Admin-approved Partner Rider ID.'
+                  ? 'Sign in with Google or Mobile OTP to submit your Driver & Vehicle documents and receive your Admin-approved Partner Rider ID.'
                   : onlineEligibility.blockers.join(' · ')}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -604,7 +591,7 @@ export const ProfileScreen: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => navigate('login_otp')}
-                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[#FFC928] px-3 text-xs font-bold text-[#111111]"
+                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[#F5C518] px-3 text-xs font-bold text-[#1E1E1E]"
                     >
                       <LogIn className="h-3.5 w-3.5" />
                       {t.loginBtn}
@@ -612,9 +599,9 @@ export const ProfileScreen: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => navigate('registration')}
-                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-neutral-700 bg-[#111317] px-3 text-xs font-bold text-white hover:border-[#FFC928]"
+                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-neutral-700 bg-[#14161A] px-3 text-xs font-bold text-white hover:border-[#F5C518]"
                     >
-                      <UserPlus className="h-3.5 w-3.5 text-[#FFC928]" />
+                      <UserPlus className="h-3.5 w-3.5 text-[#F5C518]" />
                       {t.signupBtn}
                     </button>
                   </>
@@ -623,7 +610,7 @@ export const ProfileScreen: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => navigate('registration')}
-                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[#FFC928] px-3 text-xs font-bold text-[#111111]"
+                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[#F5C518] px-3 text-xs font-bold text-[#1E1E1E]"
                     >
                       <FileCheck2 className="h-3.5 w-3.5" />
                       Upload Docs
@@ -631,7 +618,7 @@ export const ProfileScreen: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => navigate('kyc_pending')}
-                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-neutral-700 bg-[#111317] px-3 text-xs font-bold text-white hover:border-[#FFC928]"
+                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-neutral-700 bg-[#14161A] px-3 text-xs font-bold text-white hover:border-[#F5C518]"
                     >
                       Check Rider ID
                     </button>
@@ -655,8 +642,8 @@ export const ProfileScreen: React.FC = () => {
             onClick={() => setActiveTab(tab.id)}
             className={`min-h-[42px] shrink-0 rounded-xl px-3.5 text-xs font-semibold transition-colors ${
               activeTab === tab.id
-                ? 'bg-[#111111] text-white dark:bg-[#FFC928] dark:text-[#111111]'
-                : 'text-neutral-600 hover:text-[#111111] dark:text-neutral-400 dark:hover:text-white'
+                ? 'bg-[#1E1E1E] text-white dark:bg-[#F5C518] dark:text-[#1E1E1E]'
+                : 'text-neutral-600 hover:text-[#1E1E1E] dark:text-neutral-400 dark:hover:text-white'
             }`}
           >
             {tab.label}
@@ -667,7 +654,6 @@ export const ProfileScreen: React.FC = () => {
       {/* 3. ACTIVE SETTINGS PAGE CONTENT */}
       {activeTab === 'account' && (
         <div className="space-y-4">
-          {/* Account & Profile Management Directory */}
           <section className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
             <div className="border-b border-neutral-200 pb-3 dark:border-neutral-800">
               <h2 className="font-display text-base font-bold">Account &amp; Partner Records</h2>
@@ -687,7 +673,7 @@ export const ProfileScreen: React.FC = () => {
                     className="flex min-h-[60px] w-full items-center justify-between gap-3 py-3 text-left transition-colors hover:opacity-80"
                   >
                     <div className="flex min-w-0 items-center gap-3.5">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F7F8FA] text-[#111111] dark:bg-[#1A1D23] dark:text-[#FFC928]">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F7F8FA] text-[#1E1E1E] dark:bg-[#1A1D23] dark:text-[#F5C518]">
                         <Icon className="h-4 w-4" />
                       </span>
                       <div className="min-w-0">
@@ -704,7 +690,6 @@ export const ProfileScreen: React.FC = () => {
             </div>
           </section>
 
-          {/* Appearance, Language & Session Controls */}
           <section className="space-y-4">
             <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-[#14161A]">
               <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
@@ -714,7 +699,7 @@ export const ProfileScreen: React.FC = () => {
                     Saved locally on this device
                   </p>
                 </div>
-                <Globe className="h-4 w-4 text-[#FFC928]" />
+                <Globe className="h-4 w-4 text-[#F5C518]" />
               </div>
 
               <div className="mt-4 space-y-4">
@@ -728,7 +713,7 @@ export const ProfileScreen: React.FC = () => {
                       onClick={() => theme === 'dark' && toggleTheme()}
                       className={`flex min-h-[44px] items-center justify-center gap-2 rounded-xl border text-xs font-semibold ${
                         theme === 'light'
-                          ? 'border-[#111111] bg-[#111111] text-white'
+                          ? 'border-[#1E1E1E] bg-[#1E1E1E] text-white'
                           : 'border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300'
                       }`}
                     >
@@ -740,7 +725,7 @@ export const ProfileScreen: React.FC = () => {
                       onClick={() => theme === 'light' && toggleTheme()}
                       className={`flex min-h-[44px] items-center justify-center gap-2 rounded-xl border text-xs font-semibold ${
                         theme === 'dark'
-                          ? 'border-[#FFC928] bg-[#FFC928] text-[#111111]'
+                          ? 'border-[#F5C518] bg-[#F5C518] text-[#1E1E1E]'
                           : 'border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300'
                       }`}
                     >
@@ -755,23 +740,23 @@ export const ProfileScreen: React.FC = () => {
                     htmlFor="profile-language-select"
                     className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400"
                   >
-                    App Language Dropdown (English &amp; Regional Languages)
+                    App Language Dropdown (14 Languages)
                   </label>
                   <div className="flex items-center gap-2 rounded-xl border border-neutral-300 bg-[#F7F8FA] px-3.5 dark:border-neutral-700 dark:bg-[#1A1D23]">
-                    <Globe className="h-4 w-4 shrink-0 text-[#FFC928]" />
+                    <Globe className="h-4 w-4 shrink-0 text-[#F5C518]" />
                     <select
                       id="profile-language-select"
                       value={appSettings.appLanguage}
                       onChange={(e) =>
                         updateAppSettings({ appLanguage: e.target.value as IndianLanguageCode })
                       }
-                      className="min-h-[46px] w-full bg-transparent text-sm font-semibold text-[#111111] outline-none dark:text-white"
+                      className="min-h-[46px] w-full bg-transparent text-sm font-semibold text-[#1E1E1E] outline-none dark:text-white"
                     >
                       {INDIAN_LANGUAGES.map((lang) => (
                         <option
                           key={lang.code}
                           value={lang.code}
-                          className="bg-white text-[#111111] dark:bg-[#14161A] dark:text-white"
+                          className="bg-white text-[#1E1E1E] dark:bg-[#14161A] dark:text-white"
                         >
                           {lang.nativeLabel} ({lang.englishName} · {lang.regionHint})
                         </option>
@@ -786,7 +771,7 @@ export const ProfileScreen: React.FC = () => {
               <BrandLogo size="sm" showTagline />
               <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
                 Unified ecosystem identity shared across Customer App, Driver App, and Super Admin
-                Panel.
+                Panel on Cloud Firestore.
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -803,7 +788,7 @@ export const ProfileScreen: React.FC = () => {
                 ) : (
                   <PrimaryButton variant="brand" className="w-full" onClick={() => navigate('login_otp')}>
                     <LogIn className="h-4 w-4" />
-                    Partner Mobile OTP Login
+                    Partner Sign-In (Google &amp; Mobile OTP)
                   </PrimaryButton>
                 )}
               </div>
@@ -821,7 +806,7 @@ export const ProfileScreen: React.FC = () => {
                 Configure ride offer preferences (subject to admin approval and vehicle verification)
               </p>
             </div>
-            <Sliders className="h-4 w-4 text-[#FFC928]" />
+            <Sliders className="h-4 w-4 text-[#F5C518]" />
           </div>
 
           <div className="mt-2 divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -869,7 +854,7 @@ export const ProfileScreen: React.FC = () => {
                   updateDispatchPreferences({ homewardDestination: e.target.value })
                 }
                 placeholder="e.g. Indiranagar Metro, Bengaluru"
-                className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#14161A]"
+                className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#14161A]"
               />
             </div>
           )}
@@ -891,28 +876,28 @@ export const ProfileScreen: React.FC = () => {
             <div>
               <h2 className="font-display text-base font-bold">Navigation &amp; Hardware GPS</h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                Real browser Geolocation API settings and turn-by-turn map preferences
+                OpenStreetMap + OSRM routing &amp; real browser Geolocation settings
               </p>
             </div>
-            <Compass className="h-4 w-4 text-[#FFC928]" />
+            <Compass className="h-4 w-4 text-[#F5C518]" />
           </div>
 
           <div>
             <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
-              Preferred Turn-by-Turn Navigation Engine
+              Preferred Navigation Engine
             </p>
             <div className="mt-2 grid grid-cols-1 gap-2">
               {(
                 [
                   {
-                    id: 'google_maps',
-                    title: 'Google Maps App / Web',
-                    subtitle: 'Launch external turn-by-turn routing',
+                    id: 'in_app_gps',
+                    title: 'In-App OpenStreetMap + OSRM',
+                    subtitle: '100% free interactive Leaflet map with live km/h speedometer',
                   },
                   {
-                    id: 'in_app_gps',
-                    title: 'In-App Coordinate View',
-                    subtitle: 'Stay inside driver cockpit with live GPS telemetry',
+                    id: 'google_maps',
+                    title: 'External Maps App',
+                    subtitle: 'Also show quick deep-link button to open native turn-by-turn Maps',
                   },
                 ] as const
               ).map((opt) => (
@@ -922,7 +907,7 @@ export const ProfileScreen: React.FC = () => {
                   onClick={() => updateAppSettings({ preferredNavigationApp: opt.id })}
                   className={`flex min-h-[64px] items-start gap-3 rounded-xl border p-3.5 text-left transition-colors ${
                     appSettings.preferredNavigationApp === opt.id
-                      ? 'border-[#111111] bg-[#111111] text-white dark:border-[#FFC928] dark:bg-[#FFC928] dark:text-[#111111]'
+                      ? 'border-[#1E1E1E] bg-[#1E1E1E] text-white dark:border-[#F5C518] dark:bg-[#F5C518] dark:text-[#1E1E1E]'
                       : 'border-neutral-200 bg-[#F7F8FA] dark:border-neutral-700 dark:bg-[#1A1D23]'
                   }`}
                 >
@@ -953,7 +938,7 @@ export const ProfileScreen: React.FC = () => {
             />
             <SettingToggleRow
               title="Continuous Hardware GPS Stream"
-              description="Stream live browser coordinates to driver cockpit when active."
+              description="Stream live browser coordinates and km/h speed to Firestore when online."
               checked={watchingGps}
               onChange={toggleWatchGps}
             />
@@ -961,12 +946,12 @@ export const ProfileScreen: React.FC = () => {
 
           <div className="flex flex-col justify-between gap-3 rounded-xl bg-[#F7F8FA] p-4 dark:bg-[#1A1D23] sm:flex-row sm:items-center">
             <div className="flex items-start gap-2.5">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#FFC928]" />
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#F5C518]" />
               <div>
                 <p className="text-xs font-semibold">Hardware GPS Sensor Readout</p>
                 <p className="font-mono-num mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                   {liveLocation
-                    ? `${liveLocation.lat.toFixed(5)}, ${liveLocation.lng.toFixed(5)} · Accuracy ${liveLocation.accuracy_m ? `${Math.round(liveLocation.accuracy_m)}m` : 'n/a'}`
+                    ? `${liveLocation.lat.toFixed(5)}, ${liveLocation.lng.toFixed(5)} · ${Math.round(liveLocation.speed_kmh ?? 0)} km/h · ±${liveLocation.accuracy_m ?? '—'}m`
                     : locationError || 'No active GPS fix captured yet'}
                 </p>
               </div>
@@ -987,7 +972,7 @@ export const ProfileScreen: React.FC = () => {
                 Customize incoming ride alert cues and account notification channels
               </p>
             </div>
-            <Volume2 className="h-4 w-4 text-[#FFC928]" />
+            <Volume2 className="h-4 w-4 text-[#F5C518]" />
           </div>
 
           <div>
@@ -1008,7 +993,7 @@ export const ProfileScreen: React.FC = () => {
                   onClick={() => updateAppSettings({ rideOfferRingtone: tone.id })}
                   className={`min-h-[44px] rounded-xl border px-3 text-xs font-semibold transition-colors ${
                     appSettings.rideOfferRingtone === tone.id
-                      ? 'border-[#111111] bg-[#111111] text-white dark:border-[#FFC928] dark:bg-[#FFC928] dark:text-[#111111]'
+                      ? 'border-[#1E1E1E] bg-[#1E1E1E] text-white dark:border-[#F5C518] dark:bg-[#F5C518] dark:text-[#1E1E1E]'
                       : 'border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300'
                   }`}
                 >
@@ -1044,7 +1029,7 @@ export const ProfileScreen: React.FC = () => {
               variant="outline"
               onClick={() => playRideOfferAlert(appSettings.rideOfferRingtone)}
             >
-              <Volume2 className="h-4 w-4 text-[#FFC928]" />
+              <Volume2 className="h-4 w-4 text-[#F5C518]" />
               Test Alert Sound
             </PrimaryButton>
             <PrimaryButton variant="brand" onClick={() => navigate('notifications')}>
@@ -1063,7 +1048,7 @@ export const ProfileScreen: React.FC = () => {
                 Trip location sharing, OTP verification safeguards, and SOS contact details
               </p>
             </div>
-            <Lock className="h-4 w-4 text-[#FFC928]" />
+            <Lock className="h-4 w-4 text-[#F5C518]" />
           </div>
 
           <div className="flex flex-col gap-3 rounded-xl bg-[#F7F8FA] p-4 dark:bg-[#1A1D23]">
@@ -1133,13 +1118,13 @@ export const ProfileScreen: React.FC = () => {
           <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
             <div>
               <h2 className="font-display text-base font-bold">
-                Backend &amp; Future Integration Adapters
+                Firebase, Maps &amp; Device Sensors Matrix
               </h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                Real environment readiness matrix — unconfigured integrations never simulate live behavior
+                100% live Firestore, OpenStreetMap, OSRM, and Device Hardware capabilities
               </p>
             </div>
-            <ShieldCheck className="h-4 w-4 text-[#FFC928]" />
+            <ShieldCheck className="h-4 w-4 text-[#F5C518]" />
           </div>
 
           <div className="mt-2 divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -1153,7 +1138,7 @@ export const ProfileScreen: React.FC = () => {
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">{status.notes}</p>
                   {status.missingEnvVars.length > 0 && (
                     <p className="font-mono-num mt-1 text-[11px] text-amber-700 dark:text-amber-300">
-                      Required Env: {status.missingEnvVars.join(' · ')}
+                      Required: {status.missingEnvVars.join(' · ')}
                     </p>
                   )}
                 </div>
@@ -1177,7 +1162,6 @@ export const ProfileScreen: React.FC = () => {
         </section>
       )}
 
-      {/* 4. ALL PARTNER WORKSPACE ICONS & SHORTCUTS ON PROFILE PAGE */}
       <PartnerWorkspaceGrid
         title="All Partner Workspace Icons &amp; Modules"
         subtitle="Direct access to every SHINE CAPTAIN tool, document upload, trip control, and safety screen"
@@ -1221,9 +1205,8 @@ export const SupportScreen: React.FC = () => {
     if (!driverProfile) {
       setFeedback({
         type: 'error',
-        title: 'Backend Configuration Required',
-        message: 'Support tickets are persisted in the shared support_tickets table after sign-in.',
-        missingEnvVars: backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+        title: 'Partner Sign-In Required',
+        message: 'Sign in with Google or Mobile OTP to raise a support ticket in Cloud Firestore.',
       });
       return;
     }
@@ -1259,11 +1242,10 @@ export const SupportScreen: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Obsidian Helpdesk Hero */}
-      <section className="rounded-3xl bg-[#111111] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
+      <section className="rounded-3xl bg-[#1E1E1E] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex flex-col gap-3.5">
           <div>
-            <p className="text-xs font-semibold tracking-wider text-[#FFC928]">
+            <p className="text-xs font-semibold tracking-wider text-[#F5C518]">
               SHINE CAPTAIN PARTNER HELPDESK
             </p>
             <h1 className="font-display mt-1 text-2xl font-extrabold tracking-tight text-white">
@@ -1287,8 +1269,8 @@ export const SupportScreen: React.FC = () => {
               onClick={() => setSubject(topic)}
               className={`min-h-[36px] rounded-xl px-3 text-xs font-semibold transition-colors ${
                 subject === topic
-                  ? 'bg-[#FFC928] text-[#111111]'
-                  : 'bg-[#1B1E24] text-neutral-300 hover:text-white'
+                  ? 'bg-[#F5C518] text-[#1E1E1E]'
+                  : 'bg-[#262626] text-neutral-300 hover:text-white'
               }`}
             >
               {topic}
@@ -1302,7 +1284,7 @@ export const SupportScreen: React.FC = () => {
         className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-[#14161A]"
       >
         <div className="flex items-center gap-2 border-b border-neutral-200 pb-3 text-sm font-bold dark:border-neutral-800">
-          <Headphones className="h-4 w-4 text-[#FFC928]" />
+          <Headphones className="h-4 w-4 text-[#F5C518]" />
           <span>Create Operations Support Ticket</span>
         </div>
 
@@ -1313,7 +1295,7 @@ export const SupportScreen: React.FC = () => {
             placeholder="Select a quick topic above or enter subject"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-[#F7F8FA] px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-[#F7F8FA] px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -1323,7 +1305,7 @@ export const SupportScreen: React.FC = () => {
             <select
               value={rideId}
               onChange={(e) => setRideId(e.target.value)}
-              className="font-mono-num mb-2 min-h-[46px] w-full rounded-xl border border-neutral-300 bg-[#F7F8FA] px-3.5 text-xs outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+              className="font-mono-num mb-2 min-h-[46px] w-full rounded-xl border border-neutral-300 bg-[#F7F8FA] px-3.5 text-xs outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
             >
               <option value="">Select from recent recorded rides (optional)</option>
               {rideHistory.slice(0, 10).map((r) => (
@@ -1335,10 +1317,10 @@ export const SupportScreen: React.FC = () => {
           )}
           <input
             type="text"
-            placeholder="Paste Ride UUID from Ride History"
+            placeholder="Paste Ride ID from Ride History"
             value={rideId}
             onChange={(e) => setRideId(e.target.value)}
-            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-[#F7F8FA] px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-[#F7F8FA] px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -1349,7 +1331,7 @@ export const SupportScreen: React.FC = () => {
             placeholder="Describe what happened with exact time, pickup/drop location, or payout reference"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-xl border border-neutral-300 bg-[#F7F8FA] p-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="w-full rounded-xl border border-neutral-300 bg-[#F7F8FA] p-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -1358,16 +1340,15 @@ export const SupportScreen: React.FC = () => {
         </PrimaryButton>
       </form>
 
-      {/* Submitted Support Tickets History */}
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
           <div>
             <h2 className="font-display text-base font-bold">Submitted Support Tickets</h2>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Live resolution status synced from support_tickets
+              Live resolution status synced from Firestore support_tickets
             </p>
           </div>
-          <span className="font-mono-num text-xs font-bold text-[#111111] dark:text-[#FFC928]">
+          <span className="font-mono-num text-xs font-bold text-[#1E1E1E] dark:text-[#F5C518]">
             {supportTickets.length}
           </span>
         </div>
@@ -1376,7 +1357,7 @@ export const SupportScreen: React.FC = () => {
           <p className="py-5 text-center text-xs text-neutral-500 dark:text-neutral-400">
             {backendConfigured
               ? 'No support tickets raised yet.'
-              : 'Submitted support tickets and Ops replies appear here once Supabase is connected.'}
+              : 'Submitted support tickets appear here once Firebase is initialized.'}
           </p>
         ) : (
           <div className="mt-2 divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -1389,7 +1370,7 @@ export const SupportScreen: React.FC = () => {
                       ticket.status === 'resolved'
                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                         : ticket.status === 'in_review'
-                          ? 'bg-[#FFC928]/20 text-[#111111] dark:text-[#FFC928]'
+                          ? 'bg-[#F5C518]/20 text-[#1E1E1E] dark:text-[#F5C518]'
                           : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
                     }`}
                   >
@@ -1414,7 +1395,6 @@ export const SupportScreen: React.FC = () => {
 
 export const EmergencySosScreen: React.FC = () => {
   const {
-    backendConfigured,
     driverProfile,
     activeRide,
     liveLocation,
@@ -1424,6 +1404,19 @@ export const EmergencySosScreen: React.FC = () => {
     navigate,
   } = useDriverApp();
   const [triggering, setTriggering] = useState(false);
+  const [sosAlerts, setSosAlerts] = useState<SosAlertRecord[]>([]);
+
+  useEffect(() => {
+    if (!driverProfile?.driver_id) {
+      setSosAlerts([]);
+      return;
+    }
+    const unsub = driverBackendService.account.subscribeSosAlerts(
+      driverProfile.driver_id,
+      setSosAlerts
+    );
+    return unsub;
+  }, [driverProfile?.driver_id]);
 
   const handleTriggerSos = async () => {
     setTriggering(true);
@@ -1432,10 +1425,9 @@ export const EmergencySosScreen: React.FC = () => {
       if (!driverProfile) {
         setFeedback({
           type: 'error',
-          title: 'Backend SOS Dispatch Requires Connection',
+          title: 'Partner Sign-In Required for Cloud SOS',
           message:
-            'Emergency SOS writes an immediate alert to sos_alerts for the SHINE CAPTAIN safety desk. For immediate danger, dial 112 directly.',
-          missingEnvVars: backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+            'Emergency SOS writes an immediate real-time alert to Firestore sos_alerts for the SHINE CAPTAIN safety desk. For immediate danger, dial 112 directly.',
         });
         return;
       }
@@ -1454,8 +1446,8 @@ export const EmergencySosScreen: React.FC = () => {
       }
       setFeedback({
         type: 'success',
-        title: 'SOS Alert Logged',
-        message: `Alert ID ${res.data?.alert_id} transmitted to SHINE CAPTAIN Safety Desk.`,
+        title: 'SOS Alert Logged & Live',
+        message: `Alert ID ${res.data?.alert_id} transmitted via Firestore to SHINE CAPTAIN Safety Desk.`,
       });
     } finally {
       setTriggering(false);
@@ -1464,7 +1456,6 @@ export const EmergencySosScreen: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* High-Contrast Safety Command Hero */}
       <section className="rounded-3xl border border-red-200 bg-red-50/80 p-4 dark:border-red-900/60 dark:bg-red-950/30">
         <div className="flex items-start gap-3.5">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white">
@@ -1479,7 +1470,7 @@ export const EmergencySosScreen: React.FC = () => {
             </h1>
             <p className="text-sm leading-relaxed text-red-900/80 dark:text-red-200/80">
               Triggering SOS captures your hardware GPS coordinates and alerts SHINE CAB Safety
-              Operations along with your registered emergency contact.
+              Operations in real time via Firestore along with your emergency contact.
             </p>
           </div>
         </div>
@@ -1499,16 +1490,15 @@ export const EmergencySosScreen: React.FC = () => {
         </div>
       </section>
 
-      {/* Live GPS & Emergency Contact Readiness */}
       <div className="grid grid-cols-1 gap-4">
         <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-[#14161A]">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-sm font-bold">Live Hardware GPS Lock</h2>
-            <MapPin className="h-4 w-4 text-[#FFC928]" />
+            <MapPin className="h-4 w-4 text-[#F5C518]" />
           </div>
           <p className="font-mono-num mt-2 text-sm font-semibold">
             {liveLocation
-              ? `${liveLocation.lat.toFixed(5)}, ${liveLocation.lng.toFixed(5)}`
+              ? `${liveLocation.lat.toFixed(5)}, ${liveLocation.lng.toFixed(5)} · ±${liveLocation.accuracy_m ?? '—'}m`
               : locationError || 'Location not acquired yet'}
           </p>
           <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
@@ -1524,7 +1514,7 @@ export const EmergencySosScreen: React.FC = () => {
         <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-[#14161A]">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-sm font-bold">Emergency Contact</h2>
-            <PhoneCall className="h-4 w-4 text-[#FFC928]" />
+            <PhoneCall className="h-4 w-4 text-[#F5C518]" />
           </div>
           <p className="mt-2 text-sm font-semibold">
             {driverProfile?.emergency_contact_name || 'Not configured'}
@@ -1540,6 +1530,54 @@ export const EmergencySosScreen: React.FC = () => {
             Manage Emergency Contact
           </PrimaryButton>
         </div>
+
+        {/* Live SOS Alert History */}
+        <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-[#14161A]">
+          <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
+            <div>
+              <h2 className="font-display text-sm font-bold">Live SOS Escalation Log</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Real-time Firestore status (triggered → acknowledged → resolved)
+              </p>
+            </div>
+            <span className="font-mono-num text-xs font-bold text-[#F5C518]">
+              {sosAlerts.length}
+            </span>
+          </div>
+
+          {sosAlerts.length === 0 ? (
+            <p className="py-4 text-xs text-neutral-500 dark:text-neutral-400">
+              No SOS alerts dispatched from this account.
+            </p>
+          ) : (
+            <div className="mt-2 divide-y divide-neutral-200 dark:divide-neutral-800">
+              {sosAlerts.map((alert) => (
+                <div key={alert.alert_id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="font-mono-num truncate text-xs font-bold">{alert.alert_id}</p>
+                    <p className="font-mono-num text-[11px] text-neutral-500">
+                      {new Date(alert.created_at).toLocaleString()}
+                      {alert.lat != null && alert.lng != null
+                        ? ` · ${alert.lat.toFixed(4)}, ${alert.lng.toFixed(4)}`
+                        : ''}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${
+                      alert.status === 'resolved'
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                        : alert.status === 'acknowledged'
+                          ? 'bg-[#F5C518]/25 text-[#1E1E1E] dark:text-[#F5C518]'
+                          : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+                    }`}
+                  >
+                    {alert.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

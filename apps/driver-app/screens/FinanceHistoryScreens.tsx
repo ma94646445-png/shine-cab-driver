@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { PrimaryButton, ScreenHeader, StateNotice } from '../components/UiPrimitives';
 import { validateIfscCode, validateUpiId } from '../contracts/validators';
-import { payoutProviderAdapter, razorpayAdapter } from '../services/adapters/externalAdapters';
 import { driverBackendService } from '../services/driverBackendService';
 import { useDriverApp } from '../state/DriverAppContext';
 
@@ -56,11 +55,11 @@ export const EarningsScreen: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* 1. OBSIDIAN & SHINE YELLOW EARNINGS HERO */}
-      <section className="rounded-3xl bg-[#111111] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
+      {/* 1. DARK & GOLD SHINE CAPTAIN EARNINGS HERO */}
+      <section className="rounded-3xl bg-[#1E1E1E] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex flex-col gap-3.5">
           <div>
-            <p className="text-xs font-semibold tracking-wider text-[#FFC928]">
+            <p className="text-xs font-semibold tracking-wider text-[#F5C518]">
               SHINE CAPTAIN LEDGER · {earningsPeriod.toUpperCase()}
             </p>
             <div className="mt-1.5 flex items-baseline gap-2.5">
@@ -71,13 +70,13 @@ export const EarningsScreen: React.FC = () => {
             </div>
             <p className="mt-1 text-xs text-neutral-400">
               {driverProfile
-                ? `${driverProfile.full_name} · Reconciled from verified completed rides`
-                : 'Reconciled strictly from PostgreSQL completed trips'}
+                ? `${driverProfile.full_name} · Reconciled live from Cloud Firestore rides`
+                : 'Reconciled live from Cloud Firestore completed trips'}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 rounded-xl bg-[#1B1E24] p-1">
+            <div className="flex items-center gap-1 rounded-xl bg-[#262626] p-1">
               {(['daily', 'weekly', 'monthly'] as const).map((period) => (
                 <button
                   key={period}
@@ -85,7 +84,7 @@ export const EarningsScreen: React.FC = () => {
                   onClick={() => setEarningsPeriod(period)}
                   className={`min-h-[36px] rounded-lg px-3 text-xs font-semibold capitalize transition-colors ${
                     earningsPeriod === period
-                      ? 'bg-[#FFC928] text-[#111111]'
+                      ? 'bg-[#F5C518] text-[#1E1E1E]'
                       : 'text-neutral-300 hover:text-white'
                   }`}
                 >
@@ -98,14 +97,13 @@ export const EarningsScreen: React.FC = () => {
               onClick={() => void refreshDriverWorkspace()}
               disabled={loading}
               aria-label="Refresh earnings ledger"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-700 bg-[#1B1E24] text-white hover:border-neutral-500"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-700 bg-[#262626] text-white hover:border-neutral-500"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
 
-        {/* Hero Summary Strip */}
         <div className="mt-4 grid grid-cols-2 gap-3.5 border-t border-neutral-800 pt-3.5">
           <div>
             <p className="text-[11px] text-neutral-400">Gross Fare</p>
@@ -127,7 +125,7 @@ export const EarningsScreen: React.FC = () => {
           </div>
           <div>
             <p className="text-[11px] text-neutral-400">Online Hours</p>
-            <p className="font-mono-num mt-0.5 text-lg font-bold text-[#FFC928]">
+            <p className="font-mono-num mt-0.5 text-lg font-bold text-[#F5C518]">
               {earnings ? `${earnings.online_hours.toFixed(1)} hrs` : '—'}
             </p>
           </div>
@@ -137,17 +135,14 @@ export const EarningsScreen: React.FC = () => {
       {!backendConfigured && (
         <StateNotice
           variant="unconfigured"
-          title="Earnings Ledger Requires Backend Connection"
-          description="SHINE CAPTAIN never invents trip fares, commissions, or net payouts. Verified accounting figures populate from PostgreSQL (`get_driver_earnings_summary`) once rides are completed."
-          missingEnvVars={['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']}
+          title="Earnings Ledger Requires Firebase Connection"
+          description="Verified accounting figures populate live from Cloud Firestore once rides complete."
           actionLabel="Open Wallet & Payouts"
           onAction={() => navigate('wallet')}
         />
       )}
 
-      {/* 2. MOBILE FINANCIAL STATEMENT & WALLET SNAPSHOT */}
       <div className="space-y-4">
-        {/* Detailed Fare & Payment Statement */}
         <section className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
           <div>
             <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
@@ -156,10 +151,10 @@ export const EarningsScreen: React.FC = () => {
                   Fare &amp; Commission Statement
                 </h2>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Server-verified accounting breakdown ({earningsPeriod})
+                  Real-time Firestore accounting breakdown ({earningsPeriod})
                 </p>
               </div>
-              <TrendingUp className="h-4 w-4 text-[#FFC928]" />
+              <TrendingUp className="h-4 w-4 text-[#F5C518]" />
             </div>
 
             <div className="mt-2 divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
@@ -178,7 +173,7 @@ export const EarningsScreen: React.FC = () => {
                 </span>
               </div>
               <div className="flex items-center justify-between py-3">
-                <span className="font-semibold text-[#111111] dark:text-white">
+                <span className="font-semibold text-[#1E1E1E] dark:text-white">
                   Net Driver Earnings
                 </span>
                 <span className="font-mono-num text-base font-extrabold text-emerald-700 dark:text-emerald-400">
@@ -213,7 +208,6 @@ export const EarningsScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Payment Channel Split Bar */}
           <div className="mt-5 rounded-xl bg-[#F7F8FA] p-4 dark:bg-[#1A1D23]">
             <div className="flex items-center justify-between text-xs font-semibold">
               <span>Payment Mix (Online vs Cash)</span>
@@ -230,7 +224,7 @@ export const EarningsScreen: React.FC = () => {
                   />
                   <div
                     style={{ width: `${cashSharePct}%` }}
-                    className="bg-[#FFC928] transition-all"
+                    className="bg-[#F5C518] transition-all"
                   />
                 </>
               )}
@@ -238,7 +232,6 @@ export const EarningsScreen: React.FC = () => {
           </div>
         </section>
 
-        {/* Wallet Settlement & Recent Completed Trips */}
         <section className="flex flex-col justify-between gap-4">
           <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-[#14161A]">
             <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
@@ -250,7 +243,7 @@ export const EarningsScreen: React.FC = () => {
                     : 'Bank / UPI payout account'}
                 </p>
               </div>
-              <Wallet className="h-4 w-4 text-[#FFC928]" />
+              <Wallet className="h-4 w-4 text-[#F5C518]" />
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
@@ -262,7 +255,7 @@ export const EarningsScreen: React.FC = () => {
               </div>
               <div className="rounded-xl bg-[#F7F8FA] p-3.5 dark:bg-[#1A1D23]">
                 <p className="text-[11px] text-neutral-500">Cash Dues</p>
-                <p className="font-mono-num mt-1 text-lg font-extrabold text-amber-700 dark:text-[#FFC928]">
+                <p className="font-mono-num mt-1 text-lg font-extrabold text-amber-700 dark:text-[#F5C518]">
                   {wallet ? `₹${wallet.cash_commission_due_inr.toFixed(2)}` : '—'}
                 </p>
               </div>
@@ -300,7 +293,7 @@ export const EarningsScreen: React.FC = () => {
                 <IndianRupee className="mx-auto h-6 w-6 text-neutral-400" />
                 <p className="mt-2 text-xs font-semibold">No Completed Rides Yet</p>
                 <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-                  Trip-level net earnings appear after rides complete on the backend.
+                  Trip-level net earnings appear after rides complete in Cloud Firestore.
                 </p>
               </div>
             ) : (
@@ -374,7 +367,7 @@ export const WalletScreen: React.FC = () => {
       id: p.payout_id,
       kind: 'payout' as const,
       title: `Withdrawal · ${p.destination_label}`,
-      subtitle: `${p.status.toUpperCase()}${p.provider_reference ? ` · UTR ${p.provider_reference}` : ''}`,
+      subtitle: `${p.status.toUpperCase()}${p.provider_reference ? ` · Ref ${p.provider_reference}` : ''}`,
       amount: -p.amount_inr,
       date: p.settled_at || p.requested_at,
       status: p.status,
@@ -449,9 +442,8 @@ export const WalletScreen: React.FC = () => {
     if (!driverProfile || !backendConfigured) {
       setFeedback({
         type: 'error',
-        title: 'Backend Sign-In Required',
-        message: 'Bank & UPI payout accounts are stored securely in wallet_accounts after OTP sign-in.',
-        missingEnvVars: backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+        title: 'Partner Sign-In Required',
+        message: 'Bank & UPI payout accounts are stored securely in Firestore wallet_accounts after sign-in.',
       });
       return;
     }
@@ -480,7 +472,7 @@ export const WalletScreen: React.FC = () => {
     setFeedback({
       type: 'success',
       title: 'Bank / UPI Payout Account Linked',
-      message: 'Your payout destination is saved for driver settlements.',
+      message: 'Your payout destination is saved in Firestore for driver settlements.',
     });
   };
 
@@ -498,9 +490,8 @@ export const WalletScreen: React.FC = () => {
     if (!driverProfile) {
       setFeedback({
         type: 'error',
-        title: 'Backend Configuration Required',
-        message: 'Bank & UPI payouts execute exclusively server-side after authentication and verification.',
-        missingEnvVars: ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+        title: 'Partner Sign-In Required',
+        message: 'Sign in with Google or Mobile OTP to request wallet payouts.',
       });
       return;
     }
@@ -529,10 +520,9 @@ export const WalletScreen: React.FC = () => {
       return;
     }
     setBusy(true);
-    const res = await payoutProviderAdapter.initiateBankPayout(
+    const res = await driverBackendService.finance.requestPayout(
       driverProfile.driver_id,
-      amount,
-      payoutChannel
+      amount
     );
     setBusy(false);
     if (!res.ok) {
@@ -540,7 +530,6 @@ export const WalletScreen: React.FC = () => {
         type: 'error',
         title: 'Payout Unavailable',
         message: res.error?.message || 'Unable to request payout.',
-        missingEnvVars: res.error?.missingEnvVars,
       });
       return;
     }
@@ -548,8 +537,8 @@ export const WalletScreen: React.FC = () => {
     await refreshDriverWorkspace();
     setFeedback({
       type: 'success',
-      title: 'Payout Initiated',
-      message: `Reference: ${res.data?.payoutReference}`,
+      title: 'Payout Request Submitted',
+      message: `Ref: ${res.data?.provider_reference || res.data?.payout_id}`,
     });
   };
 
@@ -557,9 +546,8 @@ export const WalletScreen: React.FC = () => {
     if (!driverProfile || !wallet) {
       setFeedback({
         type: 'error',
-        title: 'Razorpay / Backend Not Configured',
-        message: 'Dues settlement requires Razorpay Checkout key and authenticated wallet ledger.',
-        missingEnvVars: razorpayAdapter.getStatus().missingEnvVars,
+        title: 'Partner Wallet Not Loaded',
+        message: 'Sign in first to settle pending cash commission dues in Cloud Firestore.',
       });
       return;
     }
@@ -572,36 +560,36 @@ export const WalletScreen: React.FC = () => {
       return;
     }
     setSettlingDues(true);
-    const res = await razorpayAdapter.createDuesSettlementOrder(
-      wallet.cash_commission_due_inr,
-      driverProfile.driver_id
+    const res = await driverBackendService.finance.settleCashDues(
+      driverProfile.driver_id,
+      wallet.cash_commission_due_inr
     );
     setSettlingDues(false);
     if (!res.ok) {
       setFeedback({
         type: 'error',
-        title: 'Razorpay Order Failed',
-        message: res.error?.message || 'Could not initiate Razorpay checkout.',
-        missingEnvVars: res.error?.missingEnvVars,
+        title: 'Settlement Failed',
+        message: res.error?.message || 'Could not settle commission dues.',
       });
       return;
     }
+    if (res.data) setWallet(res.data);
     await refreshDriverWorkspace();
     setFeedback({
       type: 'success',
-      title: 'Dues Settlement Order Created',
-      message: `Order ID: ${res.data?.orderId}`,
+      title: 'Cash Commission Dues Settled',
+      message: 'Your Cloud Firestore cash commission dues balance is now cleared.',
     });
   };
 
   return (
     <div className="space-y-4">
-      {/* 1. OBSIDIAN & SHINE YELLOW PARTNER WALLET HERO */}
-      <section className="rounded-3xl bg-[#111111] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
+      {/* 1. DARK & GOLD PARTNER WALLET HERO */}
+      <section className="rounded-3xl bg-[#1E1E1E] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold tracking-wider text-[#FFC928]">
-              SHINE CAPTAIN WALLET · INSTANT SETTLEMENTS
+            <p className="text-xs font-semibold tracking-wider text-[#F5C518]">
+              SHINE CAPTAIN WALLET · FIRESTORE LEDGER
             </p>
             <div className="mt-1.5 flex items-baseline gap-2">
               <h1 className="font-mono-num text-3xl font-extrabold tracking-tight text-white">
@@ -620,13 +608,12 @@ export const WalletScreen: React.FC = () => {
             onClick={() => void refreshDriverWorkspace()}
             disabled={loading}
             aria-label="Refresh wallet balance"
-            className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-neutral-700 bg-[#1B1E24] text-white hover:border-[#FFC928]"
+            className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-neutral-700 bg-[#262626] text-white hover:border-[#F5C518]"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
-        {/* Wallet Metrics Strip */}
         <div className="mt-4 grid grid-cols-3 gap-2.5 border-t border-neutral-800 pt-3.5">
           <div>
             <p className="text-[10px] text-neutral-400">Pending Hold</p>
@@ -646,18 +633,17 @@ export const WalletScreen: React.FC = () => {
           </div>
           <div>
             <p className="text-[10px] text-neutral-400">Net Eligible</p>
-            <p className="font-mono-num mt-0.5 text-sm font-bold text-[#FFC928]">
+            <p className="font-mono-num mt-0.5 text-sm font-bold text-[#F5C518]">
               {netWithdrawableInr !== null ? `₹${netWithdrawableInr.toFixed(0)}` : '—'}
             </p>
           </div>
         </div>
 
-        {/* Wallet Quick Action Strip */}
         <div className="mt-4 grid grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => withdrawInputRef.current?.focus()}
-            className="flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl bg-[#FFC928] px-2.5 text-xs font-extrabold text-[#111111]"
+            className="flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl bg-[#F5C518] px-2.5 text-xs font-extrabold text-[#1E1E1E]"
           >
             <ArrowUpRight className="h-3.5 w-3.5" />
             Withdraw
@@ -665,17 +651,17 @@ export const WalletScreen: React.FC = () => {
           <button
             type="button"
             onClick={() => bankSectionRef.current?.scrollIntoView({ behavior: 'smooth' })}
-            className="flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-neutral-700 bg-[#1B1E24] px-2.5 text-xs font-semibold text-white hover:border-[#FFC928]"
+            className="flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-neutral-700 bg-[#262626] px-2.5 text-xs font-semibold text-white hover:border-[#F5C518]"
           >
-            <Landmark className="h-3.5 w-3.5 text-[#FFC928]" />
+            <Landmark className="h-3.5 w-3.5 text-[#F5C518]" />
             Bank / UPI
           </button>
           <button
             type="button"
             onClick={() => navigate('payout_history')}
-            className="flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-neutral-700 bg-[#1B1E24] px-2.5 text-xs font-semibold text-white hover:border-[#FFC928]"
+            className="flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-neutral-700 bg-[#262626] px-2.5 text-xs font-semibold text-white hover:border-[#F5C518]"
           >
-            <Clock className="h-3.5 w-3.5 text-[#FFC928]" />
+            <Clock className="h-3.5 w-3.5 text-[#F5C518]" />
             Payout Log
           </button>
         </div>
@@ -684,13 +670,12 @@ export const WalletScreen: React.FC = () => {
       {!backendConfigured && (
         <StateNotice
           variant="unconfigured"
-          title="Wallet Ledger & Razorpay Settlement Unconfigured"
-          description="Wallet balances and commission dues are read strictly from wallet_accounts via RLS. Payouts never succeed locally without server verification."
-          missingEnvVars={['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_RAZORPAY_KEY_ID']}
+          title="Wallet Ledger Requires Firebase"
+          description="Wallet balances and payouts synchronize atomically with Cloud Firestore wallet_accounts and payouts collections."
         />
       )}
 
-      {/* 2. INSTANT BANK / UPI WITHDRAWAL FORM WITH PRESET CHIPS */}
+      {/* 2. INSTANT BANK / UPI WITHDRAWAL FORM */}
       <form
         onSubmit={handleRequestPayout}
         className="space-y-3.5 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]"
@@ -699,20 +684,19 @@ export const WalletScreen: React.FC = () => {
           <div>
             <h2 className="font-display text-base font-bold">Withdraw Money to Bank / UPI</h2>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Minimum ₹100 · Instant IMPS / UPI transfer
+              Minimum ₹100 · Atomic Firestore withdrawal request
             </p>
           </div>
-          <Wallet className="h-4 w-4 text-[#FFC928]" />
+          <Wallet className="h-4 w-4 text-[#F5C518]" />
         </div>
 
-        {/* Transfer Channel Selector */}
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setPayoutChannel('bank')}
             className={`flex min-h-[44px] flex-col items-start justify-center rounded-xl border px-3 py-2 text-left transition-colors ${
               payoutChannel === 'bank'
-                ? 'border-[#111111] bg-[#111111] text-white dark:border-[#FFC928] dark:bg-[#FFC928] dark:text-[#111111]'
+                ? 'border-[#1E1E1E] bg-[#1E1E1E] text-white dark:border-[#F5C518] dark:bg-[#F5C518] dark:text-[#1E1E1E]'
                 : 'border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-800 dark:bg-[#1A1D23] dark:text-neutral-300'
             }`}
           >
@@ -726,7 +710,7 @@ export const WalletScreen: React.FC = () => {
             onClick={() => setPayoutChannel('upi')}
             className={`flex min-h-[44px] flex-col items-start justify-center rounded-xl border px-3 py-2 text-left transition-colors ${
               payoutChannel === 'upi'
-                ? 'border-[#111111] bg-[#111111] text-white dark:border-[#FFC928] dark:bg-[#FFC928] dark:text-[#111111]'
+                ? 'border-[#1E1E1E] bg-[#1E1E1E] text-white dark:border-[#F5C518] dark:bg-[#F5C518] dark:text-[#1E1E1E]'
                 : 'border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-800 dark:bg-[#1A1D23] dark:text-neutral-300'
             }`}
           >
@@ -737,7 +721,6 @@ export const WalletScreen: React.FC = () => {
           </button>
         </div>
 
-        {/* Amount Input + Quick Chips */}
         <div className="space-y-2.5">
           <div className="flex items-center rounded-xl border border-neutral-300 bg-neutral-50 px-3 dark:border-neutral-700 dark:bg-[#1A1D23]">
             <IndianRupee className="h-4 w-4 text-neutral-500" />
@@ -758,7 +741,7 @@ export const WalletScreen: React.FC = () => {
                 key={preset}
                 type="button"
                 onClick={() => setPayoutAmount(String(preset))}
-                className="font-mono-num min-h-[34px] rounded-xl border border-neutral-200 bg-neutral-50 px-3 text-xs font-semibold hover:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+                className="font-mono-num min-h-[34px] rounded-xl border border-neutral-200 bg-neutral-50 px-3 text-xs font-semibold hover:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
               >
                 +₹{preset}
               </button>
@@ -767,7 +750,7 @@ export const WalletScreen: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setPayoutAmount(String(Math.floor(wallet.available_balance_inr)))}
-                className="font-mono-num min-h-[34px] rounded-xl border border-[#FFC928] bg-[#FFC928]/15 px-3 text-xs font-bold text-[#111111] dark:text-[#FFC928]"
+                className="font-mono-num min-h-[34px] rounded-xl border border-[#F5C518] bg-[#F5C518]/15 px-3 text-xs font-bold text-[#1E1E1E] dark:text-[#F5C518]"
               >
                 Max (₹{Math.floor(wallet.available_balance_inr)})
               </button>
@@ -782,27 +765,27 @@ export const WalletScreen: React.FC = () => {
         </PrimaryButton>
       </form>
 
-      {/* 3. CASH COMMISSION DUES SETTLEMENT (RAZORPAY) */}
+      {/* 3. CASH COMMISSION DUES SETTLEMENT */}
       <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
           <div>
             <h2 className="font-display text-base font-bold">Cash Commission Dues</h2>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Clear cash-ride platform commission via UPI, NetBanking or Card
+              Clear cash-ride platform commission in your Cloud Firestore ledger
             </p>
           </div>
-          <CreditCard className="h-4 w-4 text-[#FFC928]" />
+          <CreditCard className="h-4 w-4 text-[#F5C518]" />
         </div>
 
         <div className="flex items-center justify-between rounded-xl bg-[#F7F8FA] p-3.5 dark:bg-[#1A1D23]">
           <div>
             <p className="text-[11px] text-neutral-500">Outstanding Dues</p>
-            <p className="font-mono-num text-xl font-extrabold text-amber-700 dark:text-[#FFC928]">
+            <p className="font-mono-num text-xl font-extrabold text-amber-700 dark:text-[#F5C518]">
               {wallet ? `₹${wallet.cash_commission_due_inr.toFixed(2)}` : '₹—'}
             </p>
           </div>
           <span className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-600 dark:bg-[#14161A] dark:text-neutral-300">
-            Razorpay Verified
+            Firestore Verified
           </span>
         </div>
 
@@ -814,10 +797,10 @@ export const WalletScreen: React.FC = () => {
           onClick={() => void handleSettleDues()}
         >
           {settlingDues
-            ? 'Opening Razorpay Order…'
+            ? 'Settling Dues…'
             : wallet && wallet.cash_commission_due_inr > 0
-              ? `Pay ₹${wallet.cash_commission_due_inr.toFixed(0)} Dues via Razorpay`
-              : 'Pay Dues via Razorpay'}
+              ? `Settle ₹${wallet.cash_commission_due_inr.toFixed(0)} Cash Dues`
+              : 'Settle Cash Commission Dues'}
         </PrimaryButton>
       </section>
 
@@ -838,7 +821,7 @@ export const WalletScreen: React.FC = () => {
                 : 'Add your Indian Bank Account or UPI handle for settlements'}
             </p>
           </div>
-          <Landmark className="h-4 w-4 text-[#FFC928]" />
+          <Landmark className="h-4 w-4 text-[#F5C518]" />
         </div>
 
         {(wallet?.bank_account_verified || wallet?.upi_id) && (
@@ -856,14 +839,14 @@ export const WalletScreen: React.FC = () => {
             placeholder="UPI ID (e.g. drivername@okicici)"
             value={upiId}
             onChange={(e) => setUpiId(e.target.value)}
-            className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
           <input
             type="text"
             placeholder="Account Holder Name (As on Bank Passbook)"
             value={holderName}
             onChange={(e) => setHolderName(e.target.value)}
-            className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
           <div className="grid grid-cols-2 gap-2">
             <input
@@ -872,7 +855,7 @@ export const WalletScreen: React.FC = () => {
               placeholder="Bank Account No."
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
-              className="font-mono-num min-h-[44px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+              className="font-mono-num min-h-[44px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
             />
             <input
               type="text"
@@ -880,7 +863,7 @@ export const WalletScreen: React.FC = () => {
               placeholder="IFSC (SBIN0001234)"
               value={ifscCode}
               onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
-              className="font-mono-num min-h-[44px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 text-sm uppercase outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+              className="font-mono-num min-h-[44px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 text-sm uppercase outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
             />
           </div>
         </div>
@@ -890,7 +873,7 @@ export const WalletScreen: React.FC = () => {
         </PrimaryButton>
       </form>
 
-      {/* 5. RECENT WALLET TRANSACTIONS & CREDITS LEDGER */}
+      {/* 5. RECENT WALLET TRANSACTIONS */}
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
           <div>
@@ -902,7 +885,7 @@ export const WalletScreen: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('payout_history')}
-            className="text-xs font-bold text-[#111111] hover:underline dark:text-[#FFC928]"
+            className="text-xs font-bold text-[#1E1E1E] hover:underline dark:text-[#F5C518]"
           >
             All Payouts →
           </button>
@@ -913,7 +896,7 @@ export const WalletScreen: React.FC = () => {
             <IndianRupee className="mx-auto h-6 w-6 text-neutral-400" />
             <p className="mt-2 text-xs font-semibold">No Wallet Transactions Yet</p>
             <p className="mt-0.5 text-[11px] text-neutral-500">
-              Completed ride payouts and bank withdrawals from Supabase appear here automatically.
+              Completed ride payouts and bank withdrawals from Cloud Firestore appear here automatically.
             </p>
           </div>
         ) : (
@@ -927,7 +910,7 @@ export const WalletScreen: React.FC = () => {
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                         isCredit
                           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400'
-                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-[#FFC928]'
+                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-[#F5C518]'
                       }`}
                     >
                       {isCredit ? (
@@ -947,7 +930,7 @@ export const WalletScreen: React.FC = () => {
                     className={`font-mono-num shrink-0 text-sm font-extrabold ${
                       isCredit
                         ? 'text-emerald-700 dark:text-emerald-400'
-                        : 'text-[#111111] dark:text-white'
+                        : 'text-[#1E1E1E] dark:text-white'
                     }`}
                   >
                     {isCredit ? '+' : '-'}₹{Math.abs(item.amount).toFixed(2)}
@@ -963,7 +946,7 @@ export const WalletScreen: React.FC = () => {
       <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-[#FFC928]" />
+            <ShieldCheck className="h-4 w-4 text-[#F5C518]" />
             <h2 className="font-display text-sm font-bold">Settlement Rules &amp; Help</h2>
           </div>
           <button
@@ -976,11 +959,11 @@ export const WalletScreen: React.FC = () => {
         </div>
         <ul className="space-y-1.5 text-xs text-neutral-600 dark:text-neutral-400">
           <li>• Online / UPI customer payments credit directly to Available Balance after trip completion.</li>
-          <li>• Cash ride platform commission adds to Cash Dues — settle anytime via Razorpay.</li>
+          <li>• Cash ride platform commission adds to Cash Dues — settle anytime in-app via Firestore.</li>
           <li>• Bank IMPS &amp; UPI withdrawals require minimum ₹100 and KYC + Bank verification.</li>
         </ul>
         <PrimaryButton variant="outline" className="w-full" onClick={() => navigate('support')}>
-          <HelpCircle className="h-4 w-4 text-[#FFC928]" />
+          <HelpCircle className="h-4 w-4 text-[#F5C518]" />
           Report Payout or Wallet Issue
         </PrimaryButton>
       </section>
@@ -1002,8 +985,7 @@ export const PayoutHistoryScreen: React.FC = () => {
         <StateNotice
           variant={backendConfigured ? 'empty' : 'unconfigured'}
           title={backendConfigured ? 'No Payout Transactions Yet' : 'Payout Ledger Unconfigured'}
-          description="Verified settlement records from the payouts table appear here after withdrawals are processed by the backend."
-          missingEnvVars={backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']}
+          description="Verified settlement records from Cloud Firestore payouts appear here after withdrawal requests are submitted."
         />
       ) : (
         <div className="divide-y divide-neutral-200 rounded-2xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-[#14161A]">
@@ -1013,7 +995,7 @@ export const PayoutHistoryScreen: React.FC = () => {
                 ? 'text-emerald-700 dark:text-emerald-400'
                 : p.status === 'failed'
                   ? 'text-red-600 dark:text-red-400'
-                  : 'text-amber-700 dark:text-[#FFC928]';
+                  : 'text-amber-700 dark:text-[#F5C518]';
             return (
               <div key={p.payout_id} className="flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
@@ -1023,7 +1005,7 @@ export const PayoutHistoryScreen: React.FC = () => {
                   </p>
                   <p className={`font-mono-num mt-0.5 text-[11px] font-bold uppercase ${statusClass}`}>
                     {p.status}
-                    {p.provider_reference ? ` · UTR ${p.provider_reference}` : ''}
+                    {p.provider_reference ? ` · Ref ${p.provider_reference}` : ''}
                   </p>
                 </div>
                 <span className="font-mono-num shrink-0 text-base font-bold">
@@ -1079,11 +1061,10 @@ export const RideHistoryScreen: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* 1. OBSIDIAN TRIP ARCHIVE HERO */}
-      <section className="rounded-3xl bg-[#111111] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
+      <section className="rounded-3xl bg-[#1E1E1E] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex flex-col gap-3.5">
           <div>
-            <p className="text-xs font-semibold tracking-wider text-[#FFC928]">
+            <p className="text-xs font-semibold tracking-wider text-[#F5C518]">
               SHINE CAPTAIN TRIP ARCHIVE · SHARED LEDGER
             </p>
             <div className="mt-1.5 flex items-baseline gap-2.5">
@@ -1093,12 +1074,12 @@ export const RideHistoryScreen: React.FC = () => {
               <span className="text-xs font-medium text-neutral-400">Recorded Trips</span>
             </div>
             <p className="mt-1 text-xs text-neutral-400">
-              Synchronized across Customer App, Driver App &amp; Super Admin Panel
+              Synchronized across Customer App, Driver App &amp; Super Admin Panel via Firestore
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 rounded-xl bg-[#1B1E24] p-1">
+            <div className="flex items-center gap-1 rounded-xl bg-[#262626] p-1">
               {(['all', 'completed', 'cancelled'] as const).map((tab) => (
                 <button
                   key={tab}
@@ -1106,7 +1087,7 @@ export const RideHistoryScreen: React.FC = () => {
                   onClick={() => setStatusFilter(tab)}
                   className={`min-h-[36px] rounded-lg px-3 text-xs font-semibold capitalize transition-colors ${
                     statusFilter === tab
-                      ? 'bg-[#FFC928] text-[#111111]'
+                      ? 'bg-[#F5C518] text-[#1E1E1E]'
                       : 'text-neutral-300 hover:text-white'
                   }`}
                 >
@@ -1119,14 +1100,13 @@ export const RideHistoryScreen: React.FC = () => {
               onClick={() => void refreshDriverWorkspace()}
               disabled={loading}
               aria-label="Refresh ride history"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-700 bg-[#1B1E24] text-white hover:border-neutral-500"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-700 bg-[#262626] text-white hover:border-neutral-500"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
 
-        {/* Hero Summary Strip */}
         <div className="mt-4 grid grid-cols-2 gap-3.5 border-t border-neutral-800 pt-3.5">
           <div>
             <p className="text-[11px] text-neutral-400">Completed</p>
@@ -1150,7 +1130,7 @@ export const RideHistoryScreen: React.FC = () => {
           </div>
           <div>
             <p className="text-[11px] text-neutral-400">Net Trip Earnings</p>
-            <p className="font-mono-num mt-0.5 text-lg font-bold text-[#FFC928]">
+            <p className="font-mono-num mt-0.5 text-lg font-bold text-[#F5C518]">
               {backendConfigured && summary.completedCount > 0
                 ? `₹${summary.totalNetEarned.toFixed(2)}`
                 : '—'}
@@ -1159,7 +1139,6 @@ export const RideHistoryScreen: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. SEARCH & VEHICLE CATEGORY TOOLBAR */}
       <section className="flex flex-col gap-2.5 rounded-2xl border border-neutral-200 bg-white p-3.5 dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
@@ -1169,7 +1148,7 @@ export const RideHistoryScreen: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search pickup, dropoff, customer, or ride ID…"
             aria-label="Search ride history"
-            className="min-h-[44px] w-full rounded-xl border border-neutral-200 bg-[#F7F8FA] pl-10 pr-3.5 text-sm text-[#111111] outline-none placeholder:text-neutral-400 focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23] dark:text-white"
+            className="min-h-[44px] w-full rounded-xl border border-neutral-200 bg-[#F7F8FA] pl-10 pr-3.5 text-sm text-[#1E1E1E] outline-none placeholder:text-neutral-400 focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23] dark:text-white"
           />
         </div>
 
@@ -1181,8 +1160,8 @@ export const RideHistoryScreen: React.FC = () => {
               onClick={() => setVehicleFilter(cat)}
               className={`min-h-[36px] rounded-lg px-3 text-xs font-semibold capitalize transition-colors ${
                 vehicleFilter === cat
-                  ? 'bg-[#111111] text-white dark:bg-[#FFC928] dark:text-[#111111]'
-                  : 'text-neutral-600 hover:text-[#111111] dark:text-neutral-400 dark:hover:text-white'
+                  ? 'bg-[#1E1E1E] text-white dark:bg-[#F5C518] dark:text-[#1E1E1E]'
+                  : 'text-neutral-600 hover:text-[#1E1E1E] dark:text-neutral-400 dark:hover:text-white'
               }`}
             >
               {cat}
@@ -1191,13 +1170,11 @@ export const RideHistoryScreen: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. HONEST EMPTY / UNCONFIGURED OR TRIP LIST */}
       {!backendConfigured || rideHistory.length === 0 ? (
         <StateNotice
           variant={backendConfigured ? 'empty' : 'unconfigured'}
-          title={backendConfigured ? 'No Trips Completed Yet' : 'Ride History Requires Backend'}
-          description="Historical rides are queried directly from the shared rides table with your driver_id. Zero placeholder trips are fabricated."
-          missingEnvVars={backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']}
+          title={backendConfigured ? 'No Trips Completed Yet' : 'Ride History Requires Firebase'}
+          description="Historical rides are queried live from the shared Cloud Firestore rides collection matching your driver_id."
           actionLabel="Open Earnings Ledger"
           onAction={() => navigate('earnings')}
         />
@@ -1233,7 +1210,7 @@ export const RideHistoryScreen: React.FC = () => {
                 ? 'text-emerald-700 dark:text-emerald-400'
                 : ride.status === 'cancelled'
                   ? 'text-red-600 dark:text-red-400'
-                  : 'text-amber-700 dark:text-[#FFC928]';
+                  : 'text-amber-700 dark:text-[#F5C518]';
 
             return (
               <article
@@ -1241,10 +1218,9 @@ export const RideHistoryScreen: React.FC = () => {
                 className="overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-colors dark:border-neutral-800 dark:bg-[#14161A]"
               >
                 <div className="p-4">
-                  {/* Top Metadata Strip */}
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                     <div className="flex flex-wrap items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
-                      <span className="font-semibold uppercase text-[#111111] dark:text-white">
+                      <span className="font-semibold uppercase text-[#1E1E1E] dark:text-white">
                         {ride.vehicle_category}
                       </span>
                       <span>·</span>
@@ -1259,17 +1235,16 @@ export const RideHistoryScreen: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Route Track + Fare Column */}
                   <div className="mt-3.5 flex flex-col gap-3.5">
                     <div className="min-w-0 flex-1 space-y-2.5">
                       <div className="flex items-start gap-2.5">
                         <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-600" />
-                        <p className="truncate text-sm font-semibold text-[#111111] dark:text-white">
+                        <p className="truncate text-sm font-semibold text-[#1E1E1E] dark:text-white">
                           {ride.pickup_address}
                         </p>
                       </div>
                       <div className="flex items-start gap-2.5">
-                        <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-sm bg-[#111111] dark:bg-[#FFC928]" />
+                        <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-sm bg-[#1E1E1E] dark:bg-[#F5C518]" />
                         <p className="truncate text-sm font-medium text-neutral-600 dark:text-neutral-300">
                           {ride.dropoff_address}
                         </p>
@@ -1281,7 +1256,7 @@ export const RideHistoryScreen: React.FC = () => {
                         <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
                           {ride.status === 'cancelled' ? 'Estimated Fare' : 'Driver Net'}
                         </p>
-                        <p className="font-mono-num text-xl font-extrabold text-[#111111] dark:text-white">
+                        <p className="font-mono-num text-xl font-extrabold text-[#1E1E1E] dark:text-white">
                           ₹{netFare.toFixed(2)}
                         </p>
                       </div>
@@ -1289,7 +1264,7 @@ export const RideHistoryScreen: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setExpandedRideId(isExpanded ? null : ride.ride_id)}
-                        className="flex min-h-[38px] items-center gap-1 rounded-xl border border-neutral-200 bg-[#F7F8FA] px-3 text-xs font-semibold text-[#111111] hover:border-neutral-400 dark:border-neutral-700 dark:bg-[#1A1D23] dark:text-white"
+                        className="flex min-h-[38px] items-center gap-1 rounded-xl border border-neutral-200 bg-[#F7F8FA] px-3 text-xs font-semibold text-[#1E1E1E] hover:border-neutral-400 dark:border-neutral-700 dark:bg-[#1A1D23] dark:text-white"
                       >
                         Receipt
                         {isExpanded ? (
@@ -1301,7 +1276,6 @@ export const RideHistoryScreen: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Trip Specs Footer */}
                   <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3 text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
                     <span className="font-mono-num">
                       {(ride.estimated_distance_km ?? 0).toFixed(1)} km
@@ -1321,7 +1295,6 @@ export const RideHistoryScreen: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Expandable Fare Breakdown Drawer */}
                 {isExpanded && (
                   <div className="border-t border-neutral-200 bg-[#F7F8FA] p-4 dark:border-neutral-800 dark:bg-[#1A1D23]">
                     <div className="grid grid-cols-2 gap-3 text-xs">
@@ -1361,7 +1334,7 @@ export const RideHistoryScreen: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => navigate('support')}
-                        className="flex min-h-[36px] items-center gap-1.5 text-xs font-semibold text-[#111111] hover:underline dark:text-[#FFC928]"
+                        className="flex min-h-[36px] items-center gap-1.5 text-xs font-semibold text-[#1E1E1E] hover:underline dark:text-[#F5C518]"
                       >
                         <HelpCircle className="h-3.5 w-3.5" />
                         Report Trip Issue
@@ -1438,11 +1411,10 @@ export const RatingsScreen: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* 1. OBSIDIAN CUSTOMER RATING HERO */}
-      <section className="rounded-3xl bg-[#111111] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
+      <section className="rounded-3xl bg-[#1E1E1E] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex flex-col gap-3.5">
           <div>
-            <p className="text-xs font-semibold tracking-wider text-[#FFC928]">
+            <p className="text-xs font-semibold tracking-wider text-[#F5C518]">
               CUSTOMER APP RATINGS · LIVE DRIVER REPUTATION
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -1455,7 +1427,7 @@ export const RatingsScreen: React.FC = () => {
                     key={star}
                     className={`h-5 w-5 ${
                       star <= roundedStars
-                        ? 'fill-[#FFC928] text-[#FFC928]'
+                        ? 'fill-[#F5C518] text-[#F5C518]'
                         : 'text-neutral-600'
                     }`}
                   />
@@ -1477,18 +1449,17 @@ export const RatingsScreen: React.FC = () => {
             onClick={() => void refreshDriverWorkspace()}
             disabled={loading}
             aria-label="Refresh customer ratings"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center self-start rounded-xl border border-neutral-700 bg-[#1B1E24] px-3.5 text-xs font-semibold text-white hover:border-neutral-500"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center self-start rounded-xl border border-neutral-700 bg-[#262626] px-3.5 text-xs font-semibold text-white hover:border-neutral-500"
           >
             <RefreshCw className={`mr-1.5 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
 
-        {/* Hero Summary Strip */}
         <div className="mt-4 grid grid-cols-2 gap-3.5 border-t border-neutral-800 pt-3.5">
           <div>
             <p className="text-[11px] text-neutral-400">5-Star Trips</p>
-            <p className="font-mono-num mt-0.5 text-lg font-bold text-[#FFC928]">
+            <p className="font-mono-num mt-0.5 text-lg font-bold text-[#F5C518]">
               {backendConfigured ? stats.counts[5] : '—'}
             </p>
           </div>
@@ -1513,7 +1484,6 @@ export const RatingsScreen: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. STAR DISTRIBUTION & CUSTOMER APP SYNC ARCHITECTURE */}
       <div className="space-y-4">
         <section className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
           <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
@@ -1523,7 +1493,7 @@ export const RatingsScreen: React.FC = () => {
                 Distribution across all verified customer submissions
               </p>
             </div>
-            <Star className="h-4 w-4 text-[#FFC928]" />
+            <Star className="h-4 w-4 text-[#F5C518]" />
           </div>
 
           <div className="mt-4 space-y-3">
@@ -1532,7 +1502,7 @@ export const RatingsScreen: React.FC = () => {
               const pct = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
               return (
                 <div key={level} className="flex items-center gap-3 text-xs">
-                  <span className="font-mono-num w-9 shrink-0 font-bold text-[#111111] dark:text-white">
+                  <span className="font-mono-num w-9 shrink-0 font-bold text-[#1E1E1E] dark:text-white">
                     {level} ★
                   </span>
                   <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
@@ -1540,7 +1510,7 @@ export const RatingsScreen: React.FC = () => {
                       style={{ width: `${pct}%` }}
                       className={`h-full transition-all ${
                         level >= 4
-                          ? 'bg-[#FFC928]'
+                          ? 'bg-[#F5C518]'
                           : level === 3
                             ? 'bg-neutral-500'
                             : 'bg-red-500'
@@ -1565,22 +1535,21 @@ export const RatingsScreen: React.FC = () => {
                   How passenger ratings reach your profile
                 </p>
               </div>
-              <ShieldCheck className="h-4 w-4 text-[#FFC928]" />
+              <ShieldCheck className="h-4 w-4 text-[#F5C518]" />
             </div>
 
             <ul className="mt-3.5 space-y-2.5 text-xs text-neutral-600 dark:text-neutral-300">
               <li>
                 1. After a ride completes, the Customer App submits stars (1–5), feedback tags, and
-                remarks to the shared <span className="font-mono-num font-semibold">ratings</span>{' '}
-                table.
+                remarks to the shared Firestore <span className="font-mono-num font-semibold">ratings</span>{' '}
+                collection.
               </li>
               <li>
-                2. PostgreSQL enforces one verified rating per completed{' '}
-                <span className="font-mono-num font-semibold">ride_id</span> and automatically
-                updates your overall driver score.
+                2. Cloud Firestore security rules verify one authentic rating per completed{' '}
+                <span className="font-mono-num font-semibold">ride_id</span> and update your driver score.
               </li>
               <li>
-                3. New customer ratings appear here in real time via Supabase Realtime without
+                3. New customer ratings stream here live via Firebase <span className="font-mono-num font-semibold">onSnapshot</span> without
                 restarting the app.
               </li>
             </ul>
@@ -1597,7 +1566,6 @@ export const RatingsScreen: React.FC = () => {
         </section>
       </div>
 
-      {/* 3. INTERACTIVE REVIEW FILTERS */}
       <section className="flex flex-col gap-2.5 rounded-2xl border border-neutral-200 bg-white p-3.5 dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex flex-wrap items-center gap-1 rounded-xl bg-[#F7F8FA] p-1 dark:bg-[#1A1D23]">
           {(
@@ -1615,8 +1583,8 @@ export const RatingsScreen: React.FC = () => {
               onClick={() => setStarFilter(tab.id)}
               className={`min-h-[36px] rounded-lg px-3 text-xs font-semibold transition-colors ${
                 starFilter === tab.id
-                  ? 'bg-[#111111] text-white dark:bg-[#FFC928] dark:text-[#111111]'
-                  : 'text-neutral-600 hover:text-[#111111] dark:text-neutral-400 dark:hover:text-white'
+                  ? 'bg-[#1E1E1E] text-white dark:bg-[#F5C518] dark:text-[#1E1E1E]'
+                  : 'text-neutral-600 hover:text-[#1E1E1E] dark:text-neutral-400 dark:hover:text-white'
               }`}
             >
               {tab.label}
@@ -1629,7 +1597,7 @@ export const RatingsScreen: React.FC = () => {
           onClick={() => setCommentsOnly((v) => !v)}
           className={`flex min-h-[40px] items-center justify-center gap-2 rounded-xl border px-3.5 text-xs font-semibold transition-colors ${
             commentsOnly
-              ? 'border-[#111111] bg-[#111111] text-white dark:border-[#FFC928] dark:bg-[#FFC928] dark:text-[#111111]'
+              ? 'border-[#1E1E1E] bg-[#1E1E1E] text-white dark:border-[#F5C518] dark:bg-[#F5C518] dark:text-[#1E1E1E]'
               : 'border-neutral-200 bg-[#F7F8FA] text-neutral-700 dark:border-neutral-700 dark:bg-[#1A1D23] dark:text-neutral-200'
           }`}
         >
@@ -1638,13 +1606,11 @@ export const RatingsScreen: React.FC = () => {
         </button>
       </section>
 
-      {/* 4. HONEST EMPTY / UNCONFIGURED OR REVIEW FEED */}
       {!backendConfigured || ratings.length === 0 ? (
         <StateNotice
           variant={backendConfigured ? 'empty' : 'unconfigured'}
-          title={backendConfigured ? 'No Customer Reviews Yet' : 'Customer Ratings Sync Requires Backend'}
-          description="Ratings appear here strictly after customers submit reviews on completed rides in the SHINE CAB Customer App. Zero fake reviews or scores are fabricated."
-          missingEnvVars={backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']}
+          title={backendConfigured ? 'No Customer Reviews Yet' : 'Customer Ratings Sync Requires Firebase'}
+          description="Ratings appear here strictly after customers submit reviews on completed rides in the SHINE CAB Customer App."
           actionLabel="Open Ride History"
           onAction={() => navigate('ride_history')}
         />
@@ -1686,7 +1652,7 @@ export const RatingsScreen: React.FC = () => {
                           key={star}
                           className={`h-4 w-4 ${
                             star <= r.stars
-                              ? 'fill-[#FFC928] text-[#FFC928]'
+                              ? 'fill-[#F5C518] text-[#F5C518]'
                               : 'text-neutral-300 dark:text-neutral-700'
                           }`}
                         />
@@ -1713,7 +1679,7 @@ export const RatingsScreen: React.FC = () => {
                     {r.feedback_tags.map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-lg border border-neutral-200 bg-[#F7F8FA] px-2.5 py-1 text-[11px] font-semibold text-[#111111] dark:border-neutral-700 dark:bg-[#1A1D23] dark:text-neutral-200"
+                        className="rounded-lg border border-neutral-200 bg-[#F7F8FA] px-2.5 py-1 text-[11px] font-semibold text-[#1E1E1E] dark:border-neutral-700 dark:bg-[#1A1D23] dark:text-neutral-200"
                       >
                         {tag}
                       </span>
@@ -1721,7 +1687,7 @@ export const RatingsScreen: React.FC = () => {
                   </div>
                 )}
 
-                <p className="mt-3 text-sm text-[#111111] dark:text-neutral-200">
+                <p className="mt-3 text-sm text-[#1E1E1E] dark:text-neutral-200">
                   {r.comment && r.comment.trim()
                     ? `"${r.comment}"`
                     : 'Customer submitted a star rating without a written remark.'}
@@ -1734,7 +1700,7 @@ export const RatingsScreen: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => navigate('support')}
-                    className="font-semibold text-[#111111] hover:underline dark:text-[#FFC928]"
+                    className="font-semibold text-[#1E1E1E] hover:underline dark:text-[#F5C518]"
                   >
                     Report Issue
                   </button>

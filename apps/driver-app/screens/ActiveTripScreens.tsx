@@ -13,6 +13,8 @@ import {
   UserCheck,
   XCircle,
 } from 'lucide-react';
+import { LiveLeafletMap } from '../components/LiveLeafletMap';
+import { RideChatDrawer } from '../components/RideChatDrawer';
 import { PrimaryButton, ScreenHeader, StateNotice } from '../components/UiPrimitives';
 import { mapsProviderAdapter } from '../services/adapters/externalAdapters';
 import { driverBackendService } from '../services/driverBackendService';
@@ -24,14 +26,6 @@ const CANCEL_REASONS = [
   'Vehicle mechanical issue / puncture',
   'Rider did not arrive after waiting',
 ] as const;
-
-function buildOsmEmbedUrl(lat: number, lng: number): string {
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${(lng - 0.012).toFixed(
-    5
-  )}%2C${(lat - 0.012).toFixed(5)}%2C${(lng + 0.012).toFixed(5)}%2C${(lat + 0.012).toFixed(
-    5
-  )}&layer=mapnik&marker=${lat.toFixed(5)}%2C${lng.toFixed(5)}`;
-}
 
 const CancelRideDrawer: React.FC<{
   rideId: string;
@@ -122,7 +116,6 @@ export const PickupNavigationScreen: React.FC = () => {
     setFeedback,
     navigate,
   } = useDriverApp();
-  const mapsReady = mapsProviderAdapter.isConfigured();
   const [arriving, setArriving] = useState(false);
 
   const handleMarkArrived = async () => {
@@ -130,7 +123,7 @@ export const PickupNavigationScreen: React.FC = () => {
       setFeedback({
         type: 'error',
         title: 'No Active Assigned Ride',
-        message: 'Arrival updates require an active ride accepted via the shared backend.',
+        message: 'Arrival updates require an active ride accepted in Cloud Firestore.',
       });
       return;
     }
@@ -156,7 +149,7 @@ export const PickupNavigationScreen: React.FC = () => {
     <div className="space-y-4">
       <ScreenHeader
         title="Pickup Navigation"
-        subtitle="Route to customer pickup point using real maps and GPS"
+        subtitle="Free OpenStreetMap (Leaflet) + OSRM route to customer pickup point"
         action={
           <PrimaryButton variant="outline" onClick={() => void requestGpsFix()}>
             <Navigation className="h-4 w-4" />
@@ -165,85 +158,93 @@ export const PickupNavigationScreen: React.FC = () => {
         }
       />
 
-      {!mapsReady && (
-        <StateNotice
-          variant="unconfigured"
-          title="Google Maps Embedded Navigation Not Configured"
-          description="Turn-by-turn external Maps routing and OpenStreetMap viewport preview remain active for every assigned ride."
-          missingEnvVars={['VITE_GOOGLE_MAPS_API_KEY']}
-        />
-      )}
-
       {!activeRide ? (
         <StateNotice
           variant="empty"
           title="No Assigned Pickup Route"
-          description="Pickup navigation populates strictly from an accepted backend ride (pickup_lat, pickup_lng, pickup_address). No simulated map pins or fake routes are rendered."
+          description="Pickup navigation populates strictly from an accepted Firestore ride (pickup_lat, pickup_lng, pickup_address)."
           actionLabel="View Customer Details Screen"
           onAction={() => navigate('customer_details')}
         />
       ) : (
-        <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
-          <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800">
-            <iframe
-              title="Customer Pickup Map"
-              src={buildOsmEmbedUrl(activeRide.pickup_lat, activeRide.pickup_lng)}
-              className="h-48 w-full border-0"
+        <div className="space-y-4">
+          <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
+            <LiveLeafletMap
+              driverLocation={liveLocation}
+              destination={{
+                lat: activeRide.pickup_lat,
+                lng: activeRide.pickup_lng,
+                label: activeRide.pickup_address,
+                kind: 'pickup',
+              }}
+              heightClass="h-56"
+              showSpeedometer
+              onCenterGps={() => void requestGpsFix()}
             />
-          </div>
 
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold text-neutral-500">Pickup Address</p>
-              <p className="mt-1 text-base font-bold">{activeRide.pickup_address}</p>
-              <p className="font-mono-num mt-1 text-xs text-neutral-500">
-                Target: {activeRide.pickup_lat.toFixed(5)}, {activeRide.pickup_lng.toFixed(5)}
-                {liveLocation
-                  ? ` · GPS: ${liveLocation.lat.toFixed(5)}, ${liveLocation.lng.toFixed(5)}`
-                  : ''}
-              </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold text-neutral-500">Pickup Address</p>
+                <p className="mt-1 text-base font-bold">{activeRide.pickup_address}</p>
+                <p className="font-mono-num mt-1 text-xs text-neutral-500">
+                  Target: {activeRide.pickup_lat.toFixed(5)}, {activeRide.pickup_lng.toFixed(5)}
+                  {liveLocation
+                    ? ` · GPS: ${liveLocation.lat.toFixed(5)}, ${liveLocation.lng.toFixed(5)}`
+                    : ''}
+                </p>
+              </div>
+              <MapPin className="h-6 w-6 shrink-0 text-[#F5C518]" />
             </div>
-            <MapPin className="h-6 w-6 shrink-0 text-[#FFC928]" />
+
+            <div className="flex flex-wrap gap-2.5">
+              <a
+                href={mapsProviderAdapter.openExternalTurnByTurn(
+                  activeRide.pickup_lat,
+                  activeRide.pickup_lng,
+                  activeRide.pickup_address
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-300 px-3.5 text-xs font-semibold hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+              >
+                <span>Open Maps App</span>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+              {activeRide.customer?.masked_phone && (
+                <a
+                  href={`tel:${activeRide.customer.masked_phone}`}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-300 px-3.5 text-xs font-semibold dark:border-neutral-700"
+                >
+                  <Phone className="h-4 w-4 text-[#F5C518]" />
+                  Call Rider
+                </a>
+              )}
+              <PrimaryButton variant="brand" disabled={arriving} onClick={() => void handleMarkArrived()}>
+                {arriving ? 'Updating…' : 'Arrived at Pickup'}
+              </PrimaryButton>
+              {driverProfile && (
+                <CancelRideDrawer
+                  rideId={activeRide.ride_id}
+                  driverId={driverProfile.driver_id}
+                  onCancelled={async () => {
+                    setActiveRide(null);
+                    await refreshDriverWorkspace();
+                    navigate('dashboard');
+                  }}
+                />
+              )}
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2.5">
-            <a
-              href={mapsProviderAdapter.openExternalTurnByTurn(
-                activeRide.pickup_lat,
-                activeRide.pickup_lng,
-                activeRide.pickup_address
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-300 px-3.5 text-xs font-semibold hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-            >
-              <span>Turn-by-Turn Maps</span>
-              <ExternalLink className="h-4 w-4" />
-            </a>
-            {activeRide.customer?.masked_phone && (
-              <a
-                href={`tel:${activeRide.customer.masked_phone}`}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-300 px-3.5 text-xs font-semibold dark:border-neutral-700"
-              >
-                <Phone className="h-4 w-4 text-[#FFC928]" />
-                Call Rider
-              </a>
-            )}
-            <PrimaryButton variant="brand" disabled={arriving} onClick={() => void handleMarkArrived()}>
-              {arriving ? 'Updating…' : 'Arrived at Pickup'}
-            </PrimaryButton>
-            {driverProfile && (
-              <CancelRideDrawer
-                rideId={activeRide.ride_id}
-                driverId={driverProfile.driver_id}
-                onCancelled={async () => {
-                  setActiveRide(null);
-                  await refreshDriverWorkspace();
-                  navigate('dashboard');
-                }}
-              />
-            )}
-          </div>
+          {driverProfile && (
+            <RideChatDrawer
+              rideId={activeRide.ride_id}
+              driverId={driverProfile.driver_id}
+              driverName={driverProfile.full_name}
+              customerId={activeRide.customer_id}
+              customerName={activeRide.customer?.display_name}
+            />
+          )}
         </div>
       )}
     </div>
@@ -251,87 +252,99 @@ export const PickupNavigationScreen: React.FC = () => {
 };
 
 export const CustomerDetailsScreen: React.FC = () => {
-  const { activeRide, navigate } = useDriverApp();
+  const { activeRide, driverProfile, navigate } = useDriverApp();
 
   return (
     <div className="space-y-4">
       <ScreenHeader
         title="Customer Details"
-        subtitle="Shared customer identity & pickup instructions for assigned ride"
+        subtitle="Shared customer identity, live chat & pickup instructions for assigned ride"
       />
 
       {!activeRide?.customer ? (
         <StateNotice
           variant="empty"
           title="No Assigned Customer"
-          description="Customer details (name, masked phone, rating, pickup instructions) are visible strictly after a real ride is atomically assigned to you."
+          description="Customer details (name, masked phone, rating, pickup instructions) are visible strictly after a real ride is assigned to you."
           actionLabel="Proceed to Pickup OTP Screen"
           onAction={() => navigate('pickup_otp')}
         />
       ) : (
-        <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-[#14161A]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#111111] text-[#FFC928]">
-                <UserCheck className="h-6 w-6" />
+        <div className="space-y-4">
+          <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-[#14161A]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#1E1E1E] text-[#F5C518]">
+                  <UserCheck className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="font-display text-lg font-bold">
+                    {activeRide.customer.display_name}
+                  </h2>
+                  <p className="font-mono-num flex items-center gap-2 text-xs text-neutral-500">
+                    <span>ID: {activeRide.customer.customer_id}</span>
+                    {activeRide.customer.rating != null && (
+                      <span className="inline-flex items-center gap-1 font-bold text-[#1E1E1E] dark:text-[#F5C518]">
+                        <Star className="h-3.5 w-3.5 fill-[#F5C518] text-[#F5C518]" />
+                        {activeRide.customer.rating.toFixed(1)}
+                      </span>
+                    )}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-display text-lg font-bold">
-                  {activeRide.customer.display_name}
-                </h2>
-                <p className="font-mono-num flex items-center gap-2 text-xs text-neutral-500">
-                  <span>ID: {activeRide.customer.customer_id}</span>
-                  {activeRide.customer.rating != null && (
-                    <span className="inline-flex items-center gap-1 font-bold text-[#111111] dark:text-[#FFC928]">
-                      <Star className="h-3.5 w-3.5 fill-[#FFC928] text-[#FFC928]" />
-                      {activeRide.customer.rating.toFixed(1)}
-                    </span>
-                  )}
-                </p>
-              </div>
+              {activeRide.customer.masked_phone && (
+                <a
+                  href={`tel:${activeRide.customer.masked_phone}`}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#F5C518] px-4 text-xs font-bold text-[#1E1E1E]"
+                >
+                  <Phone className="h-4 w-4" />
+                  Call Customer
+                </a>
+              )}
             </div>
-            {activeRide.customer.masked_phone && (
-              <a
-                href={`tel:${activeRide.customer.masked_phone}`}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#FFC928] px-4 text-xs font-bold text-[#111111]"
-              >
-                <Phone className="h-4 w-4" />
-                Call Customer
-              </a>
+
+            <div className="space-y-2 rounded-xl bg-[#F7F8FA] p-3.5 text-xs dark:bg-[#1A1D23]">
+              <p>
+                <span className="font-semibold text-neutral-500">Pickup: </span>
+                <span className="font-semibold">{activeRide.pickup_address}</span>
+              </p>
+              <p>
+                <span className="font-semibold text-neutral-500">Dropoff: </span>
+                <span className="font-semibold">{activeRide.dropoff_address}</span>
+              </p>
+              <p className="font-mono-num text-neutral-500">
+                {activeRide.estimated_distance_km} km · {activeRide.estimated_duration_min} min ·{' '}
+                {activeRide.payment_mode.toUpperCase()} · ₹{activeRide.estimated_fare_inr.toFixed(0)}
+              </p>
+            </div>
+
+            {activeRide.customer.pickup_note && (
+              <p className="rounded-xl border border-[#F5C518]/40 bg-[#F5C518]/10 p-3 text-xs font-medium text-neutral-800 dark:text-neutral-200">
+                Pickup note: {activeRide.customer.pickup_note}
+              </p>
             )}
+
+            <div className="flex flex-wrap gap-2.5">
+              <PrimaryButton variant="outline" onClick={() => navigate('pickup_navigation')}>
+                <MapPin className="h-4 w-4" />
+                Pickup Map
+              </PrimaryButton>
+              <PrimaryButton variant="brand" onClick={() => navigate('pickup_otp')}>
+                <KeyRound className="h-4 w-4" />
+                Enter Pickup OTP
+              </PrimaryButton>
+            </div>
           </div>
 
-          <div className="space-y-2 rounded-xl bg-[#F7F8FA] p-3.5 text-xs dark:bg-[#1A1D23]">
-            <p>
-              <span className="font-semibold text-neutral-500">Pickup: </span>
-              <span className="font-semibold">{activeRide.pickup_address}</span>
-            </p>
-            <p>
-              <span className="font-semibold text-neutral-500">Dropoff: </span>
-              <span className="font-semibold">{activeRide.dropoff_address}</span>
-            </p>
-            <p className="font-mono-num text-neutral-500">
-              {activeRide.estimated_distance_km} km · {activeRide.estimated_duration_min} min ·{' '}
-              {activeRide.payment_mode.toUpperCase()} · ₹{activeRide.estimated_fare_inr.toFixed(0)}
-            </p>
-          </div>
-
-          {activeRide.customer.pickup_note && (
-            <p className="rounded-xl border border-[#FFC928]/40 bg-[#FFC928]/10 p-3 text-xs font-medium text-neutral-800 dark:text-neutral-200">
-              Pickup note: {activeRide.customer.pickup_note}
-            </p>
+          {driverProfile && (
+            <RideChatDrawer
+              rideId={activeRide.ride_id}
+              driverId={driverProfile.driver_id}
+              driverName={driverProfile.full_name}
+              customerId={activeRide.customer_id}
+              customerName={activeRide.customer.display_name}
+            />
           )}
-
-          <div className="flex flex-wrap gap-2.5">
-            <PrimaryButton variant="outline" onClick={() => navigate('pickup_navigation')}>
-              <MapPin className="h-4 w-4" />
-              Pickup Map
-            </PrimaryButton>
-            <PrimaryButton variant="brand" onClick={() => navigate('pickup_otp')}>
-              <KeyRound className="h-4 w-4" />
-              Enter Pickup OTP
-            </PrimaryButton>
-          </div>
         </div>
       )}
     </div>
@@ -364,10 +377,9 @@ export const PickupOtpScreen: React.FC = () => {
     if (!backendConfigured || !activeRide || !driverProfile) {
       setFeedback({
         type: 'error',
-        title: 'Backend Verification Required',
+        title: 'No Assigned Ride Active',
         message:
-          'Pickup OTP validation executes server-side via the verify-pickup-otp Edge Function against pickup_otp_hash.',
-        missingEnvVars: backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+          'Accept an assigned customer ride first before verifying the 4-digit Pickup OTP.',
       });
       return;
     }
@@ -402,7 +414,7 @@ export const PickupOtpScreen: React.FC = () => {
       <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-[#14161A]">
         <form onSubmit={handleVerify} className="max-w-sm space-y-4">
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <KeyRound className="h-4 w-4 text-[#FFC928]" />
+            <KeyRound className="h-4 w-4 text-[#F5C518]" />
             <span>Customer Ride PIN</span>
           </div>
           <input
@@ -412,11 +424,11 @@ export const PickupOtpScreen: React.FC = () => {
             placeholder="••••"
             value={otp}
             onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-            className="font-mono-num min-h-[54px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-4 text-center text-2xl font-bold tracking-[0.5em] outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="font-mono-num min-h-[54px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-4 text-center text-2xl font-bold tracking-[0.5em] outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Validated strictly on the backend Edge Function (`verify-pickup-otp`). Rides cannot
-            transition to `in_progress` without verified OTP.
+            Validated strictly in Cloud Firestore against the ride&apos;s Customer App PIN. Trips
+            cannot transition to active until verified.
           </p>
           <PrimaryButton type="submit" variant="brand" disabled={verifying} className="w-full">
             {verifying ? 'Verifying PIN…' : 'Verify OTP & Start Ride'}
@@ -434,6 +446,7 @@ export const ActiveRideScreen: React.FC = () => {
     setLastCompletedRide,
     driverProfile,
     liveLocation,
+    requestGpsFix,
     setFeedback,
     refreshDriverWorkspace,
     navigate,
@@ -443,15 +456,15 @@ export const ActiveRideScreen: React.FC = () => {
   const handleShareTrip = async () => {
     if (!activeRide) return;
     const gpsText = liveLocation
-      ? `https://maps.google.com/?q=${liveLocation.lat.toFixed(5)},${liveLocation.lng.toFixed(5)}`
-      : `https://maps.google.com/?q=${activeRide.dropoff_lat.toFixed(5)},${activeRide.dropoff_lng.toFixed(5)}`;
-    const shareText = `SHINE CAB Live Trip (${activeRide.ride_id})\nFrom: ${activeRide.pickup_address}\nTo: ${activeRide.dropoff_address}\nTrack GPS: ${gpsText}`;
+      ? `https://www.openstreetmap.org/?mlat=${liveLocation.lat.toFixed(5)}&mlon=${liveLocation.lng.toFixed(5)}#map=16/${liveLocation.lat.toFixed(5)}/${liveLocation.lng.toFixed(5)}`
+      : `https://www.openstreetmap.org/?mlat=${activeRide.dropoff_lat.toFixed(5)}&mlon=${activeRide.dropoff_lng.toFixed(5)}#map=16/${activeRide.dropoff_lat.toFixed(5)}/${activeRide.dropoff_lng.toFixed(5)}`;
+    const shareText = `SHINE CAPTAIN Live Trip (${activeRide.ride_id})\nFrom: ${activeRide.pickup_address}\nTo: ${activeRide.dropoff_address}\nTrack GPS: ${gpsText}`;
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: 'SHINE CAB Live Trip', text: shareText });
+        await navigator.share({ title: 'SHINE CAPTAIN Live Trip', text: shareText });
         return;
       } catch {
-        // User cancelled or share unsupported, fall back to clipboard
+        // Fallback to clipboard
       }
     }
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -464,7 +477,7 @@ export const ActiveRideScreen: React.FC = () => {
         });
         return;
       } catch {
-        // Clipboard permission denied in embedded browser context
+        // Clipboard permission denied
       }
     }
     setFeedback({
@@ -479,7 +492,7 @@ export const ActiveRideScreen: React.FC = () => {
       setFeedback({
         type: 'error',
         title: 'No Active In-Progress Ride',
-        message: 'Only rides with verified pickup OTP in `in_progress` status can be completed.',
+        message: 'Only rides with verified pickup OTP in progress can be completed.',
       });
       return;
     }
@@ -511,7 +524,7 @@ export const ActiveRideScreen: React.FC = () => {
     <div className="space-y-4">
       <ScreenHeader
         title="Active Ride Screen"
-        subtitle="Trip telemetry, dropoff guidance, and emergency safety control"
+        subtitle="OpenStreetMap dropoff route, speedometer telemetry, live chat & SOS"
         action={
           <PrimaryButton variant="danger" onClick={() => navigate('emergency_sos')}>
             <ShieldAlert className="h-4 w-4" />
@@ -524,77 +537,94 @@ export const ActiveRideScreen: React.FC = () => {
         <StateNotice
           variant="empty"
           title="No Ride Currently In Progress"
-          description="Active trip telemetry appears once a pickup OTP is verified on the backend."
+          description="Active trip telemetry and OSRM route navigation appear once a customer's 4-digit Pickup OTP is verified."
           actionLabel="View Ride Completion Layout"
           onAction={() => navigate('ride_completion')}
         />
       ) : (
-        <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
-          <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800">
-            <iframe
-              title="Dropoff Navigation Map"
-              src={buildOsmEmbedUrl(activeRide.dropoff_lat, activeRide.dropoff_lng)}
-              className="h-48 w-full border-0"
+        <div className="space-y-4">
+          <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
+            <LiveLeafletMap
+              driverLocation={liveLocation}
+              destination={{
+                lat: activeRide.dropoff_lat,
+                lng: activeRide.dropoff_lng,
+                label: activeRide.dropoff_address,
+                kind: 'dropoff',
+              }}
+              heightClass="h-56"
+              showSpeedometer
+              onCenterGps={() => void requestGpsFix()}
             />
-          </div>
 
-          <div>
-            <p className="text-xs font-semibold text-neutral-500">Dropoff Destination</p>
-            <p className="mt-1 text-base font-bold">{activeRide.dropoff_address}</p>
-            <p className="font-mono-num mt-1.5 text-xs text-neutral-500">
-              Fare: ₹{activeRide.estimated_fare_inr.toFixed(2)} ·{' '}
-              {activeRide.payment_mode.toUpperCase()} · {activeRide.estimated_distance_km} km
-              {liveLocation ? ` · GPS ${liveLocation.lat.toFixed(4)}, ${liveLocation.lng.toFixed(4)}` : ''}
-            </p>
-          </div>
+            <div>
+              <p className="text-xs font-semibold text-neutral-500">Dropoff Destination</p>
+              <p className="mt-1 text-base font-bold">{activeRide.dropoff_address}</p>
+              <p className="font-mono-num mt-1.5 text-xs text-neutral-500">
+                Fare: ₹{activeRide.estimated_fare_inr.toFixed(2)} ·{' '}
+                {activeRide.payment_mode.toUpperCase()} · {activeRide.estimated_distance_km} km
+                {liveLocation ? ` · GPS ${liveLocation.lat.toFixed(4)}, ${liveLocation.lng.toFixed(4)}` : ''}
+              </p>
+            </div>
 
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={mapsProviderAdapter.openExternalTurnByTurn(
-                activeRide.dropoff_lat,
-                activeRide.dropoff_lng,
-                activeRide.dropoff_address
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 px-3.5 text-xs font-semibold dark:border-neutral-700"
-            >
-              Turn-by-Turn Maps
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-            {activeRide.customer?.masked_phone && (
+            <div className="flex flex-wrap gap-2">
               <a
-                href={`tel:${activeRide.customer.masked_phone}`}
+                href={mapsProviderAdapter.openExternalTurnByTurn(
+                  activeRide.dropoff_lat,
+                  activeRide.dropoff_lng,
+                  activeRide.dropoff_address
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 px-3.5 text-xs font-semibold dark:border-neutral-700"
               >
-                <Phone className="h-3.5 w-3.5 text-[#FFC928]" />
-                Call Rider
+                Open Maps App
+                <ExternalLink className="h-3.5 w-3.5" />
               </a>
-            )}
-            <PrimaryButton variant="outline" onClick={() => void handleShareTrip()}>
-              <Share2 className="h-3.5 w-3.5" />
-              Share Trip
+              {activeRide.customer?.masked_phone && (
+                <a
+                  href={`tel:${activeRide.customer.masked_phone}`}
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 px-3.5 text-xs font-semibold dark:border-neutral-700"
+                >
+                  <Phone className="h-3.5 w-3.5 text-[#F5C518]" />
+                  Call Rider
+                </a>
+              )}
+              <PrimaryButton variant="outline" onClick={() => void handleShareTrip()}>
+                <Share2 className="h-3.5 w-3.5" />
+                Share Trip
+              </PrimaryButton>
+            </div>
+
+            <PrimaryButton
+              variant="brand"
+              className="w-full"
+              disabled={completing}
+              onClick={() => void handleCompleteRide()}
+            >
+              {completing ? 'Finalizing Ledger…' : 'Complete Ride & Settle Fare'}
             </PrimaryButton>
+
+            {driverProfile && (
+              <CancelRideDrawer
+                rideId={activeRide.ride_id}
+                driverId={driverProfile.driver_id}
+                onCancelled={async () => {
+                  setActiveRide(null);
+                  await refreshDriverWorkspace();
+                  navigate('dashboard');
+                }}
+              />
+            )}
           </div>
 
-          <PrimaryButton
-            variant="brand"
-            className="w-full"
-            disabled={completing}
-            onClick={() => void handleCompleteRide()}
-          >
-            {completing ? 'Finalizing Ledger…' : 'Complete Ride & Settle Fare'}
-          </PrimaryButton>
-
           {driverProfile && (
-            <CancelRideDrawer
+            <RideChatDrawer
               rideId={activeRide.ride_id}
               driverId={driverProfile.driver_id}
-              onCancelled={async () => {
-                setActiveRide(null);
-                await refreshDriverWorkspace();
-                navigate('dashboard');
-              }}
+              driverName={driverProfile.full_name}
+              customerId={activeRide.customer_id}
+              customerName={activeRide.customer?.display_name}
             />
           )}
         </div>
@@ -614,30 +644,29 @@ export const RideCompletionScreen: React.FC = () => {
     <div className="space-y-4">
       <ScreenHeader
         title="Ride Completion & Fare Summary"
-        subtitle="Server-calculated fare, commission, and net driver payout"
+        subtitle="Firestore transaction-calculated fare, commission, and net driver payout"
       />
 
       {!latestCompleted ? (
         <StateNotice
           variant="empty"
           title="No Verified Completed Ride Summary"
-          description="Fare breakdowns, commission deductions, and cash collection confirmations are populated exclusively from the complete-ride Edge Function."
+          description="Fare breakdowns, commission deductions, and cash/UPI collection confirmations appear immediately after completing a live trip."
           actionLabel="Go to Earnings Dashboard"
           onAction={() => navigate('earnings')}
         />
       ) : (
         <div className="space-y-4">
-          {/* Payment Collection Prompt */}
           <div
             className={`rounded-2xl border p-4 ${
               isCash
-                ? 'border-[#FFC928] bg-[#FFC928]/15 text-[#111111] dark:text-white'
+                ? 'border-[#F5C518] bg-[#F5C518]/15 text-[#1E1E1E] dark:text-white'
                 : 'border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200'
             }`}
           >
             <div className="flex items-center gap-3">
               {isCash ? (
-                <Banknote className="h-6 w-6 shrink-0 text-[#111111] dark:text-[#FFC928]" />
+                <Banknote className="h-6 w-6 shrink-0 text-[#1E1E1E] dark:text-[#F5C518]" />
               ) : (
                 <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-600 dark:text-emerald-400" />
               )}
@@ -650,7 +679,7 @@ export const RideCompletionScreen: React.FC = () => {
                 <p className="text-xs opacity-80">
                   {isCash
                     ? 'Net earnings & platform commission due updated in Partner Wallet.'
-                    : 'Net driver payout credited directly to your wallet balance.'}
+                    : 'Net driver payout credited directly to your Firestore wallet balance.'}
                 </p>
               </div>
             </div>

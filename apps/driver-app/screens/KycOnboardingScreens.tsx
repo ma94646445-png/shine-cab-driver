@@ -99,12 +99,9 @@ export const PersonalDetailsScreen: React.FC = () => {
 
     if (!res.ok) {
       setFeedback({
-        type: res.configured ? 'error' : 'info',
-        title: res.configured ? 'Profile Save Failed' : 'Draft Saved Locally (Backend Unconfigured)',
-        message: res.configured
-          ? res.error?.message || 'Could not save profile.'
-          : 'Your form inputs remain in local draft only. Connect Supabase to persist to the shared drivers table.',
-        missingEnvVars: res.error?.missingEnvVars,
+        type: res.error?.code === 'UNAUTHENTICATED' ? 'info' : 'error',
+        title: res.error?.code === 'UNAUTHENTICATED' ? 'Sign In Required' : 'Profile Save Failed',
+        message: res.error?.message || 'Sign in with Google or OTP first to save profile to Firestore.',
       });
       return;
     }
@@ -123,9 +120,8 @@ export const PersonalDetailsScreen: React.FC = () => {
       {!backendConfigured && (
         <StateNotice
           variant="unconfigured"
-          title="Backend Sync Inactive"
-          description="Form validation works locally, but profile persistence requires Supabase Auth and the shared drivers table."
-          missingEnvVars={['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']}
+          title="Firebase Sync Inactive"
+          description="Verify firebase-applet-config.json to persist driver details to Cloud Firestore."
         />
       )}
 
@@ -140,7 +136,7 @@ export const PersonalDetailsScreen: React.FC = () => {
             placeholder="As printed on Driving License"
             value={onboardingDraft.fullName}
             onChange={(e) => updateDraft({ fullName: e.target.value })}
-            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -155,7 +151,7 @@ export const PersonalDetailsScreen: React.FC = () => {
             onChange={(e) =>
               updateDraft({ phone: e.target.value.replace(/\D/g, '').slice(0, 10) })
             }
-            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -166,7 +162,7 @@ export const PersonalDetailsScreen: React.FC = () => {
             placeholder="e.g. Bengaluru, Hyderabad, Delhi"
             value={onboardingDraft.city}
             onChange={(e) => updateDraft({ city: e.target.value })}
-            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -176,7 +172,7 @@ export const PersonalDetailsScreen: React.FC = () => {
             type="date"
             value={onboardingDraft.dateOfBirth}
             onChange={(e) => updateDraft({ dateOfBirth: e.target.value })}
-            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -187,7 +183,7 @@ export const PersonalDetailsScreen: React.FC = () => {
             placeholder="partner@example.com"
             value={onboardingDraft.email}
             onChange={(e) => updateDraft({ email: e.target.value })}
-            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -198,7 +194,7 @@ export const PersonalDetailsScreen: React.FC = () => {
             placeholder="Family member or trusted contact"
             value={onboardingDraft.emergencyContactName}
             onChange={(e) => updateDraft({ emergencyContactName: e.target.value })}
-            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -215,7 +211,7 @@ export const PersonalDetailsScreen: React.FC = () => {
                 emergencyContactPhone: e.target.value.replace(/\D/g, '').slice(0, 10),
               })
             }
-            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -282,13 +278,13 @@ export const VehicleSelectionScreen: React.FC = () => {
               onClick={() => updateDraft({ vehicleCategory: cat.id })}
               className={`flex flex-col justify-between rounded-2xl border p-5 text-left transition-all ${
                 selected
-                  ? 'border-[#111111] bg-[#FFC928]/15 ring-2 ring-[#FFC928] dark:border-[#FFC928] dark:bg-[#FFC928]/10'
+                  ? 'border-[#1E1E1E] bg-[#F5C518]/15 ring-2 ring-[#F5C518] dark:border-[#F5C518] dark:bg-[#F5C518]/10'
                   : 'border-neutral-200 bg-white hover:border-neutral-400 dark:border-neutral-800 dark:bg-[#14161A]'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#111111] text-[#FFC928]">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1E1E1E] text-[#F5C518]">
                     {cat.id === 'bike' ? (
                       <Bike className="h-5 w-5" />
                     ) : cat.id === 'auto' ? (
@@ -298,7 +294,7 @@ export const VehicleSelectionScreen: React.FC = () => {
                     )}
                   </span>
                   {selected && (
-                    <span className="text-xs font-bold text-[#111111] dark:text-[#FFC928]">
+                    <span className="text-xs font-bold text-[#1E1E1E] dark:text-[#F5C518]">
                       Selected
                     </span>
                   )}
@@ -369,10 +365,9 @@ export const VehicleDetailsScreen: React.FC = () => {
     if (!backendConfigured || !driverProfile) {
       setFeedback({
         type: 'info',
-        title: 'Vehicle Draft Validated — Sign-In Required',
+        title: 'Sign-In Required to Save Vehicle',
         message:
-          'Your vehicle details are saved in the form draft. Sign in via Mobile OTP with Supabase connected to persist them.',
-        missingEnvVars: backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+          'Your vehicle details are saved in the form draft. Sign in with Google or OTP to sync them to Firestore.',
       });
       return;
     }
@@ -393,10 +388,9 @@ export const VehicleDetailsScreen: React.FC = () => {
 
     if (!res.ok) {
       setFeedback({
-        type: res.configured ? 'error' : 'info',
-        title: res.configured ? 'Vehicle Save Failed' : 'Backend Configuration Required',
+        type: 'error',
+        title: 'Vehicle Save Failed',
         message: res.error?.message || 'Unable to save vehicle record.',
-        missingEnvVars: res.error?.missingEnvVars,
       });
       return;
     }
@@ -423,7 +417,7 @@ export const VehicleDetailsScreen: React.FC = () => {
             placeholder="KA01AB1234"
             value={onboardingDraft.registrationNumber}
             onChange={(e) => updateDraft({ registrationNumber: e.target.value.toUpperCase() })}
-            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm uppercase outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm uppercase outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -434,7 +428,7 @@ export const VehicleDetailsScreen: React.FC = () => {
             placeholder="e.g. Maruti Suzuki, Bajaj, Honda"
             value={onboardingDraft.vehicleMake}
             onChange={(e) => updateDraft({ vehicleMake: e.target.value })}
-            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -445,7 +439,7 @@ export const VehicleDetailsScreen: React.FC = () => {
             placeholder="e.g. Dzire, RE Compact, Activa"
             value={onboardingDraft.vehicleModel}
             onChange={(e) => updateDraft({ vehicleModel: e.target.value })}
-            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -457,14 +451,14 @@ export const VehicleDetailsScreen: React.FC = () => {
               placeholder="2023"
               value={onboardingDraft.vehicleYear}
               onChange={(e) => updateDraft({ vehicleYear: e.target.value })}
-              className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+              className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
             />
             <input
               type="text"
               placeholder="Color"
               value={onboardingDraft.vehicleColor}
               onChange={(e) => updateDraft({ vehicleColor: e.target.value })}
-              className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+              className="min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
             />
           </div>
         </div>
@@ -475,7 +469,7 @@ export const VehicleDetailsScreen: React.FC = () => {
             type="date"
             value={onboardingDraft.insuranceExpiry}
             onChange={(e) => updateDraft({ insuranceExpiry: e.target.value })}
-            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -485,7 +479,7 @@ export const VehicleDetailsScreen: React.FC = () => {
             type="date"
             value={onboardingDraft.rcExpiry}
             onChange={(e) => updateDraft({ rcExpiry: e.target.value })}
-            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="font-mono-num min-h-[46px] w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3.5 text-sm outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         </div>
 
@@ -512,7 +506,7 @@ export const ALL_KYC_DOCUMENTS: {
     type: 'driver_selfie',
     group: 'driver',
     title: 'Driver Live Photo / Selfie',
-    hint: 'Clear unmasked face photo (syncs to header profile avatar)',
+    hint: 'Clear unmasked face photo (syncs to header & Admin KYC)',
   },
   {
     type: 'driving_license',
@@ -590,8 +584,7 @@ export const DocumentUploadScreen: React.FC = () => {
       setFeedback({
         type: 'info',
         title: 'Document Staged Locally',
-        message: `${file.name} attached. Private storage upload to kyc-documents requires Supabase authentication.`,
-        missingEnvVars: backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+        message: `${file.name} attached. Sign in with Google or Phone OTP so it compresses & saves directly to Firestore for Super Admin.`,
       });
       return;
     }
@@ -603,15 +596,14 @@ export const DocumentUploadScreen: React.FC = () => {
       setFeedback({
         type: 'error',
         title: 'Upload Failed',
-        message: res.error?.message || 'Unable to upload document.',
+        message: res.error?.message || 'Unable to compress & upload document.',
       });
       return;
     }
-    await refreshDriverWorkspace();
     setFeedback({
       type: 'success',
-      title: 'Document Uploaded',
-      message: `${file.name} uploaded securely for Admin review.`,
+      title: 'Saved to Super Admin KYC Queue',
+      message: `${file.name} compressed cleanly & synced to Cloud Firestore.`,
     });
   };
 
@@ -619,9 +611,8 @@ export const DocumentUploadScreen: React.FC = () => {
     if (!driverProfile) {
       setFeedback({
         type: 'error',
-        title: 'Backend Session Required',
-        message: 'Authenticate and connect the shared backend to submit KYC documents for Super Admin review.',
-        missingEnvVars: backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+        title: 'Sign-In Required',
+        message: 'Sign in with Google or Phone OTP to submit KYC documents for Super Admin review.',
       });
       return;
     }
@@ -646,6 +637,8 @@ export const DocumentUploadScreen: React.FC = () => {
   const renderDocCard = (doc: (typeof ALL_KYC_DOCUMENTS)[number]) => {
     const remote = documents.find((d) => d.document_type === doc.type);
     const localName = onboardingDraft.selectedFiles[doc.type];
+    const previewSrc =
+      remote?.file_url && remote.file_url.startsWith('data:image/') ? remote.file_url : null;
     return (
       <div
         key={doc.type}
@@ -672,6 +665,13 @@ export const DocumentUploadScreen: React.FC = () => {
               {remote?.file_name || localName}
             </p>
           )}
+          {previewSrc && (
+            <img
+              src={previewSrc}
+              alt={doc.title}
+              className="mt-2.5 h-24 w-36 rounded-xl border border-neutral-200 object-cover dark:border-neutral-700"
+            />
+          )}
         </div>
 
         <div className="mt-4">
@@ -681,8 +681,8 @@ export const DocumentUploadScreen: React.FC = () => {
             accept="image/*,.pdf"
             cameraTitle={`Click Photo: ${doc.title}`}
             busy={uploadingDoc === doc.type}
-            cameraLabel="Click Camera"
-            uploadLabel="Upload File"
+            cameraLabel="Click Photo"
+            uploadLabel="Upload"
           />
         </div>
       </div>
@@ -693,7 +693,7 @@ export const DocumentUploadScreen: React.FC = () => {
     <div className="space-y-6">
       <ScreenHeader
         title="Driver & Vehicle Document Upload"
-        subtitle="Click live camera photos or upload files for all 9 Driver & Vehicle authentication documents"
+        subtitle="Zero paid storage buckets — photos compress automatically on device & sync straight to Super Admin Firestore"
       />
 
       <section className="space-y-3">
@@ -739,27 +739,31 @@ export const KycPendingScreen: React.FC = () => {
       ok: Boolean(driverProfile?.vehicle_verified && vehicle?.verification_status === 'verified'),
     },
     { label: 'Super Admin Approval Granted', ok: Boolean(driverProfile?.admin_approved) },
-    { label: 'Partner Rider ID Provisioned & Account Active', ok: Boolean(driverProfile?.account_status === 'active' && driverProfile?.partner_rider_id) },
+    {
+      label: 'Partner Rider ID Provisioned & Account Active',
+      ok: Boolean(driverProfile?.account_status === 'active' && driverProfile?.partner_rider_id),
+    },
   ];
 
   return (
     <div className="space-y-6">
       <ScreenHeader
         title="Admin Approval & Rider ID Status"
-        subtitle="Live verification gate synced from SHINE CAB Super Admin Panel"
+        subtitle="Real-time verification gate synced from SHINE CAB Super Admin Panel"
         action={
           <PrimaryButton variant="outline" onClick={() => void refreshDriverWorkspace()}>
-            Refresh Backend Status
+            Refresh Live Status
           </PrimaryButton>
         }
       />
 
-      {!backendConfigured ? (
+      {!backendConfigured || !driverProfile ? (
         <StateNotice
           variant="unconfigured"
-          title="Backend Not Connected — Approval Status Unknown"
-          description="SHINE CAPTAIN never fabricates approval or Partner Rider IDs. Connect the shared Supabase backend to inspect real KYC verification state."
-          missingEnvVars={['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']}
+          title="Sign In to View Admin Approval Status"
+          description="SHINE CAPTAIN syncs your Partner Rider ID and KYC decision directly from Cloud Firestore."
+          actionLabel="Open Partner Login"
+          onAction={() => navigate('login_otp')}
         />
       ) : (
         <StateNotice
@@ -778,10 +782,10 @@ export const KycPendingScreen: React.FC = () => {
       )}
 
       {/* Partner Rider ID Provisioning Card */}
-      <div className="rounded-2xl bg-[#111111] p-5 text-white dark:border dark:border-neutral-800 dark:bg-[#14161A]">
+      <div className="rounded-2xl bg-[#1E1E1E] p-5 text-white dark:border dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold tracking-wider text-[#FFC928]">
+            <p className="text-xs font-semibold tracking-wider text-[#F5C518]">
               OFFICIAL PARTNER RIDER ID
             </p>
             <p className="font-mono-num mt-1 text-xl font-extrabold">
@@ -796,7 +800,7 @@ export const KycPendingScreen: React.FC = () => {
             </p>
           </div>
           {driverProfile?.admin_approved && driverProfile?.partner_rider_id ? (
-            <BadgeCheck className="h-8 w-8 shrink-0 text-[#FFC928]" />
+            <BadgeCheck className="h-8 w-8 shrink-0 text-[#F5C518]" />
           ) : (
             <Lock className="h-7 w-7 shrink-0 text-neutral-500" />
           )}
@@ -853,9 +857,8 @@ export const KycDecisionScreen: React.FC = () => {
       {!backendConfigured || !driverProfile ? (
         <StateNotice
           variant="unconfigured"
-          title="No Verified Backend Record"
-          description="KYC approval or rejection decisions are never simulated locally. Sign in with an active Supabase backend to view your decision."
-          missingEnvVars={backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']}
+          title="Sign In Required"
+          description="Sign in with Google or Mobile OTP to inspect your live Super Admin KYC verification decision."
           actionLabel="Open Document Upload"
           onAction={() => navigate('document_upload')}
         />
@@ -868,7 +871,7 @@ export const KycDecisionScreen: React.FC = () => {
             toggle Online Duty from the Home Dashboard.
           </p>
           {driverProfile.partner_rider_id && (
-            <p className="font-mono-num mt-3 inline-block rounded-xl bg-[#111111] px-3.5 py-2 text-xs font-bold text-[#FFC928]">
+            <p className="font-mono-num mt-3 inline-block rounded-xl bg-[#1E1E1E] px-3.5 py-2 text-xs font-bold text-[#F5C518]">
               Partner Rider ID: {driverProfile.partner_rider_id}
             </p>
           )}

@@ -9,10 +9,10 @@ import {
   Clock,
   Compass,
   ExternalLink,
+  Gauge,
   Globe,
   KeyRound,
   Lock,
-  MapPin,
   Navigation,
   Phone,
   Radio,
@@ -25,7 +25,9 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
+import { LiveLeafletMap } from '../components/LiveLeafletMap';
 import { OnlineToggle } from '../components/OnlineToggle';
+import { RideChatDrawer } from '../components/RideChatDrawer';
 import { PrimaryButton, ScreenHeader, StateNotice } from '../components/UiPrimitives';
 import type { VehicleCategory } from '../contracts/types';
 import { INDIAN_LANGUAGES, type IndianLanguageCode } from '../i18n/translations';
@@ -139,31 +141,34 @@ export const DashboardScreen: React.FC = () => {
   const recentTrips = rideHistory.slice(0, 3);
   const recentAlerts = notifications.slice(0, 3);
 
-  const osmEmbedUrl = liveLocation
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${(liveLocation.lng - 0.014).toFixed(
-        5
-      )}%2C${(liveLocation.lat - 0.014).toFixed(5)}%2C${(liveLocation.lng + 0.014).toFixed(
-        5
-      )}%2C${(liveLocation.lat + 0.014).toFixed(
-        5
-      )}&layer=mapnik&marker=${liveLocation.lat.toFixed(5)}%2C${liveLocation.lng.toFixed(5)}`
+  const mapDestination = activeRide
+    ? {
+        lat: activeRide.pickup_otp_verified ? activeRide.dropoff_lat : activeRide.pickup_lat,
+        lng: activeRide.pickup_otp_verified ? activeRide.dropoff_lng : activeRide.pickup_lng,
+        label: activeRide.pickup_otp_verified
+          ? activeRide.dropoff_address
+          : activeRide.pickup_address,
+        kind: (activeRide.pickup_otp_verified ? 'dropoff' : 'pickup') as 'pickup' | 'dropoff',
+      }
     : null;
+
+  const speedKmh = Math.max(0, Math.round(liveLocation?.speed_kmh ?? 0));
 
   const handleAcceptOffer = async () => {
     if (!incomingOffer || !driverProfile) {
       setFeedback({
         type: 'error',
-        title: 'Backend Ride Offer Required',
+        title: 'Live Ride Offer Required',
         message:
-          'Atomic ride acceptance requires a live backend ride offer and an approved driver session.',
-        missingEnvVars: backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+          'Ride acceptance requires a live Firestore ride offer and an approved partner session.',
       });
       return;
     }
     setActionBusy('accept');
     const res = await driverBackendService.rides.acceptRide(
       incomingOffer.ride_id,
-      driverProfile.driver_id
+      driverProfile.driver_id,
+      vehicle?.vehicle_id
     );
     setActionBusy(null);
     if (!res.ok) {
@@ -223,10 +228,8 @@ export const DashboardScreen: React.FC = () => {
     if (!backendConfigured || !activeRide || !driverProfile) {
       setFeedback({
         type: 'error',
-        title: 'No Assigned Backend Ride',
-        message:
-          'Pickup OTP validation executes server-side via verify-pickup-otp against an assigned ride.',
-        missingEnvVars: backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+        title: 'No Assigned Ride',
+        message: 'Pickup OTP verification runs directly against your active Firestore ride.',
       });
       return;
     }
@@ -278,30 +281,30 @@ export const DashboardScreen: React.FC = () => {
     setFeedback({
       type: 'success',
       title: 'Trip Completed & Ledger Updated',
-      message: 'Net driver earnings and commission records are synced.',
+      message: 'Net driver earnings and commission records are synced to Firestore.',
     });
   };
 
   return (
     <div className="space-y-4">
-      {/* 1. SIGNATURE OBSIDIAN & SHINE YELLOW PARTNER COCKPIT */}
-      <section className="relative overflow-hidden rounded-3xl bg-[#111111] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
+      {/* 1. SIGNATURE DARK & GOLD SHINE CAPTAIN COCKPIT */}
+      <section className="relative overflow-hidden rounded-3xl bg-[#1E1E1E] p-4 text-white shadow-sm dark:border dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-3.5">
             <button
               type="button"
               onClick={() => navigate('profile')}
               aria-label="Open Driver Profile Photo"
-              className="shrink-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-[#FFC928]"
+              className="shrink-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-[#F5C518]"
             >
               {driverAvatarUrl ? (
                 <img
                   src={driverAvatarUrl}
                   alt={driverProfile?.full_name || 'Driver Profile'}
-                  className="h-14 w-14 rounded-2xl object-cover ring-2 ring-[#FFC928]"
+                  className="h-14 w-14 rounded-2xl object-cover ring-2 ring-[#F5C518]"
                 />
               ) : (
-                <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-neutral-700 bg-[#1B1E24] text-[#FFC928]">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-neutral-700 bg-[#262626] text-[#F5C518]">
                   <User className="h-6 w-6" />
                 </span>
               )}
@@ -309,11 +312,11 @@ export const DashboardScreen: React.FC = () => {
 
             <div className="min-w-0 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-semibold tracking-wider text-[#FFC928]">
+                <p className="text-xs font-semibold tracking-wider text-[#F5C518]">
                   SHINE CAPTAIN · {activeCategory.toUpperCase()} PARTNER
                 </p>
                 {driverProfile?.partner_rider_id && (
-                  <span className="font-mono-num inline-flex items-center gap-1 rounded-md bg-[#FFC928]/15 px-2 py-0.5 text-[11px] font-bold text-[#FFC928]">
+                  <span className="font-mono-num inline-flex items-center gap-1 rounded-md bg-[#F5C518]/15 px-2 py-0.5 text-[11px] font-bold text-[#F5C518]">
                     <BadgeCheck className="h-3 w-3" />
                     {driverProfile.partner_rider_id}
                   </span>
@@ -329,11 +332,7 @@ export const DashboardScreen: React.FC = () => {
                         ? `${vehicle.make} ${vehicle.model} · ${vehicle.registration_number}`
                         : 'Vehicle registration pending'
                     }`
-                  : `${onboardingDraft.city ? `${onboardingDraft.city} · ` : ''}${
-                      backendConfigured
-                        ? 'Live dispatch & trip tracker ready'
-                        : 'Live language & hardware GPS dispatch ready'
-                    }`}
+                  : `${onboardingDraft.city ? `${onboardingDraft.city} · ` : ''}Live Firestore dispatch & OpenStreetMap GPS ready`}
               </p>
             </div>
           </div>
@@ -346,16 +345,16 @@ export const DashboardScreen: React.FC = () => {
               onClick={() => void toggleOnlineStatus()}
               className={`inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-extrabold transition-transform active:scale-[0.98] disabled:opacity-60 ${
                 isOnline
-                  ? 'bg-[#FFC928] text-[#111111]'
+                  ? 'bg-[#F5C518] text-[#1E1E1E]'
                   : canGoOnline
-                  ? 'bg-white text-[#111111] hover:bg-[#FFC928]'
-                  : 'border border-neutral-700 bg-[#1B1E24] text-neutral-200 hover:border-[#FFC928]'
+                  ? 'bg-white text-[#1E1E1E] hover:bg-[#F5C518]'
+                  : 'border border-neutral-700 bg-[#262626] text-neutral-200 hover:border-[#F5C518]'
               }`}
             >
               {canGoOnline || isOnline ? (
                 <Radio className="h-4 w-4" />
               ) : (
-                <Lock className="h-4 w-4 text-[#FFC928]" />
+                <Lock className="h-4 w-4 text-[#F5C518]" />
               )}
               <span>{isOnline ? t.goOffline : canGoOnline ? t.goOnline : t.dutyLocked}</span>
             </button>
@@ -365,7 +364,7 @@ export const DashboardScreen: React.FC = () => {
               onClick={() => void refreshDriverWorkspace()}
               disabled={loading}
               aria-label="Refresh workspace"
-              className="flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-2xl border border-neutral-700 bg-[#1B1E24] text-white transition-colors hover:border-neutral-500"
+              className="flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-2xl border border-neutral-700 bg-[#262626] text-white transition-colors hover:border-neutral-500"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -389,8 +388,8 @@ export const DashboardScreen: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between gap-2">
-            <label className="flex min-h-[40px] flex-1 items-center gap-1.5 rounded-xl border border-neutral-700 bg-[#1B1E24] px-2.5 text-xs">
-              <Globe className="h-3.5 w-3.5 shrink-0 text-[#FFC928]" />
+            <label className="flex min-h-[40px] flex-1 items-center gap-1.5 rounded-xl border border-neutral-700 bg-[#262626] px-2.5 text-xs">
+              <Globe className="h-3.5 w-3.5 shrink-0 text-[#F5C518]" />
               <select
                 aria-label="Select Indian App Language"
                 value={appSettings.appLanguage}
@@ -400,7 +399,7 @@ export const DashboardScreen: React.FC = () => {
                 className="w-full truncate bg-transparent text-xs font-semibold text-white outline-none"
               >
                 {INDIAN_LANGUAGES.map((lang) => (
-                  <option key={lang.code} value={lang.code} className="bg-[#111111] text-white">
+                  <option key={lang.code} value={lang.code} className="bg-[#1E1E1E] text-white">
                     {lang.nativeLabel} ({lang.englishName})
                   </option>
                 ))}
@@ -409,7 +408,7 @@ export const DashboardScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('onboarding')}
-              className="min-h-[40px] shrink-0 rounded-xl border border-neutral-700 bg-[#1B1E24] px-3 text-xs font-semibold text-neutral-300 hover:border-[#FFC928] hover:text-white"
+              className="min-h-[40px] shrink-0 rounded-xl border border-neutral-700 bg-[#262626] px-3 text-xs font-semibold text-neutral-300 hover:border-[#F5C518] hover:text-white"
             >
               Tour &amp; City
             </button>
@@ -429,8 +428,8 @@ export const DashboardScreen: React.FC = () => {
                 onClick={() => setEarningsPeriod(period)}
                 className={`min-h-[32px] rounded-md px-2.5 text-xs font-semibold capitalize transition-colors ${
                   earningsPeriod === period
-                    ? 'bg-[#111111] text-white dark:bg-[#FFC928] dark:text-[#111111]'
-                    : 'text-neutral-600 hover:text-[#111111] dark:text-neutral-300'
+                    ? 'bg-[#1E1E1E] text-white dark:bg-[#F5C518] dark:text-[#1E1E1E]'
+                    : 'text-neutral-600 hover:text-[#1E1E1E] dark:text-neutral-300'
                 }`}
               >
                 {period}
@@ -487,7 +486,7 @@ export const DashboardScreen: React.FC = () => {
             className="p-4 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/40"
           >
             <p className="text-xs text-neutral-500 dark:text-neutral-400">Partner Rating</p>
-            <p className="font-mono-num mt-1 text-2xl font-extrabold text-[#111111] dark:text-[#FFC928]">
+            <p className="font-mono-num mt-1 text-2xl font-extrabold text-[#1E1E1E] dark:text-[#F5C518]">
               {driverProfile?.rating_average ? `${driverProfile.rating_average.toFixed(2)} ★` : '—'}
             </p>
             <p className="mt-0.5 text-[11px] text-neutral-500">View Customer Reviews →</p>
@@ -495,69 +494,72 @@ export const DashboardScreen: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. MOBILE STACKED WORKSPACE: LIVE GPS MAP + RIDE ACCEPT / OTP TERMINAL */}
+      {/* 3. LIVE LEAFLET OPENSTREETMAP GPS + RIDE ACCEPT / OTP TERMINAL */}
       <div className="space-y-4">
-        {/* Hardware GPS & Embedded Live Map Radar Surface */}
         <section className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
           <div>
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-display text-base font-bold">Live GPS Map &amp; Route Radar</h2>
+                <h2 className="font-display text-base font-bold">
+                  Live OpenStreetMap GPS &amp; Speedometer
+                </h2>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Real device geolocation &amp; turn-by-turn map
+                  Free Leaflet tiles + OSRM route &amp; live speed telemetry
                 </p>
               </div>
-              <Compass className="h-5 w-5 text-[#FFC928]" />
+              <Compass className="h-5 w-5 text-[#F5C518]" />
             </div>
 
-            <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200 bg-[#F7F8FA] dark:border-neutral-800 dark:bg-[#0D0F13]">
-              {liveLocation && osmEmbedUrl ? (
-                <div>
-                  <iframe
-                    title="Driver Live GPS Map"
-                    src={osmEmbedUrl}
-                    className="h-44 w-full border-0"
-                  />
-                  <div className="flex items-center justify-between gap-2 border-t border-neutral-200 p-3 dark:border-neutral-800">
-                    <div>
+            <div className="mt-4 space-y-2.5">
+              <LiveLeafletMap
+                driverLocation={liveLocation}
+                destination={mapDestination}
+                heightClass="h-52"
+                showSpeedometer
+                onCenterGps={() => void requestGpsFix()}
+              />
+
+              {liveLocation ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-[#F7F8FA] p-3 dark:border-neutral-800 dark:bg-[#0D0F13]">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
                       <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-                        Authentic Hardware GPS Fix
+                        Live Device GPS Fix
                       </p>
-                      <p className="font-mono-num text-xs font-bold">
-                        {liveLocation.lat.toFixed(5)}, {liveLocation.lng.toFixed(5)} · ±
-                        {liveLocation.accuracy_m ?? '—'}m
-                      </p>
+                      <span className="font-mono-num inline-flex items-center gap-1 rounded-md bg-[#1E1E1E] px-2 py-0.5 text-[11px] font-bold text-[#F5C518]">
+                        <Gauge className="h-3 w-3" />
+                        {speedKmh} km/h
+                      </span>
                     </div>
-                    <a
-                      href={mapsProviderAdapter.openExternalTurnByTurn(
-                        liveLocation.lat,
-                        liveLocation.lng,
-                        driverProfile?.city || onboardingDraft.city || 'My Location'
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex min-h-[36px] items-center gap-1 rounded-xl border border-neutral-300 px-2.5 text-[11px] font-semibold hover:border-[#FFC928] dark:border-neutral-700"
-                    >
-                      Maps
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                    <p className="font-mono-num mt-0.5 text-xs font-bold">
+                      {liveLocation.lat.toFixed(5)}, {liveLocation.lng.toFixed(5)} · ±
+                      {liveLocation.accuracy_m ?? '—'}m
+                    </p>
                   </div>
+                  <a
+                    href={mapsProviderAdapter.openExternalTurnByTurn(
+                      mapDestination?.lat ?? liveLocation.lat,
+                      mapDestination?.lng ?? liveLocation.lng,
+                      mapDestination?.label ??
+                        driverProfile?.city ??
+                        onboardingDraft.city ??
+                        'My Location'
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-[36px] items-center gap-1 rounded-xl border border-neutral-300 bg-white px-2.5 text-[11px] font-semibold hover:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1E1E1E]"
+                  >
+                    Open Maps
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
               ) : locationError ? (
-                <div className="p-4">
+                <div className="rounded-xl border border-red-200 bg-red-50/70 p-3 dark:border-red-900/50 dark:bg-red-950/20">
                   <p className="text-xs font-medium text-red-600 dark:text-red-400">
                     {locationError}
                   </p>
                 </div>
-              ) : (
-                <div className="space-y-1.5 p-4">
-                  <p className="text-xs font-semibold">No GPS Fix Acquired Yet</p>
-                  <p className="text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                    Tap Sync GPS to center the live map on your real device coordinates. Simulated
-                    map pins are disabled.
-                  </p>
-                </div>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -572,7 +574,7 @@ export const DashboardScreen: React.FC = () => {
                 className="flex-1"
                 onClick={toggleWatchGps}
               >
-                {watchingGps ? 'Stop Watch' : 'Watch Live'}
+                {watchingGps ? 'Streaming GPS Live' : 'Watch Live'}
               </PrimaryButton>
             </div>
 
@@ -587,7 +589,7 @@ export const DashboardScreen: React.FC = () => {
                     onClick={() => updateDraft({ vehicleCategory: cat })}
                     className={`flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border text-xs font-bold uppercase transition-colors ${
                       selected
-                        ? 'border-[#111111] bg-[#FFC928] text-[#111111]'
+                        ? 'border-[#1E1E1E] bg-[#F5C518] text-[#1E1E1E]'
                         : 'border-neutral-200 bg-neutral-50 text-neutral-600 dark:border-neutral-800 dark:bg-[#1A1D23] dark:text-neutral-300'
                     }`}
                   >
@@ -615,7 +617,7 @@ export const DashboardScreen: React.FC = () => {
                   Ride Accept &amp; Pickup OTP Terminal
                 </h2>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Atomic dispatch lock · 4-digit rider start PIN
+                  Real-time Firestore transaction · 4-digit rider start PIN
                 </p>
               </div>
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
@@ -634,7 +636,7 @@ export const DashboardScreen: React.FC = () => {
                       <span
                         className={
                           reached
-                            ? 'font-bold text-[#111111] dark:text-[#FFC928]'
+                            ? 'font-bold text-[#1E1E1E] dark:text-[#F5C518]'
                             : 'text-neutral-400'
                         }
                       >
@@ -647,7 +649,7 @@ export const DashboardScreen: React.FC = () => {
             </div>
 
             {incomingOffer ? (
-              <div className="mt-4 space-y-4 rounded-2xl border-2 border-[#FFC928] bg-[#FFC928]/5 p-4">
+              <div className="mt-4 space-y-4 rounded-2xl border-2 border-[#F5C518] bg-[#F5C518]/10 p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <span className="font-mono-num block text-xs font-semibold text-neutral-500">
@@ -656,7 +658,7 @@ export const DashboardScreen: React.FC = () => {
                       {incomingOffer.payment_mode.toUpperCase()}
                     </span>
                     {offerSecondsLeft !== null && (
-                      <span className="font-mono-num inline-flex items-center gap-1 text-xs font-bold text-amber-700 dark:text-[#FFC928]">
+                      <span className="font-mono-num inline-flex items-center gap-1 text-xs font-bold text-amber-700 dark:text-[#F5C518]">
                         <Clock className="h-3.5 w-3.5" />
                         Expires in {offerSecondsLeft}s
                       </span>
@@ -684,7 +686,7 @@ export const DashboardScreen: React.FC = () => {
                     onClick={() => void handleAcceptOffer()}
                   >
                     <CheckCircle2 className="h-4 w-4" />
-                    {actionBusy === 'accept' ? 'Accepting…' : 'Accept Ride Atomically'}
+                    {actionBusy === 'accept' ? 'Accepting…' : 'Accept Ride'}
                   </PrimaryButton>
                   <PrimaryButton
                     variant="outline"
@@ -718,7 +720,7 @@ export const DashboardScreen: React.FC = () => {
                         {activeRide.customer.masked_phone && (
                           <a
                             href={`tel:${activeRide.customer.masked_phone}`}
-                            className="inline-flex items-center gap-1 font-semibold text-[#111111] underline dark:text-[#FFC928]"
+                            className="inline-flex items-center gap-1 font-semibold text-[#1E1E1E] underline dark:text-[#F5C518]"
                           >
                             <Phone className="h-3 w-3" />
                             Call Rider
@@ -741,28 +743,22 @@ export const DashboardScreen: React.FC = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <a
-                    href={mapsProviderAdapter.openExternalTurnByTurn(
-                      activeRide.pickup_otp_verified ? activeRide.dropoff_lat : activeRide.pickup_lat,
-                      activeRide.pickup_otp_verified ? activeRide.dropoff_lng : activeRide.pickup_lng,
-                      activeRide.pickup_otp_verified
-                        ? activeRide.dropoff_address
-                        : activeRide.pickup_address
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-300 px-4 text-xs font-semibold dark:border-neutral-700"
+                  <PrimaryButton
+                    variant="outline"
+                    onClick={() =>
+                      navigate(activeRide.pickup_otp_verified ? 'active_ride' : 'pickup_navigation')
+                    }
                   >
-                    Turn-by-Turn Maps
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
+                    <Navigation className="h-3.5 w-3.5" />
+                    Full Navigation Screen
+                  </PrimaryButton>
                   {!activeRide.pickup_otp_verified && activeRide.status !== 'arrived' && (
                     <PrimaryButton
                       variant="dark"
                       disabled={actionBusy === 'arrive'}
                       onClick={() => void handleMarkArrived()}
                     >
-                      Mark Arrived
+                      {actionBusy === 'arrive' ? 'Updating…' : 'Arrived at Pickup'}
                     </PrimaryButton>
                   )}
                   {activeRide.status === 'in_progress' && activeRide.pickup_otp_verified && (
@@ -771,7 +767,7 @@ export const DashboardScreen: React.FC = () => {
                       disabled={actionBusy === 'complete'}
                       onClick={() => void handleCompleteRide()}
                     >
-                      Complete &amp; Settle Fare
+                      {actionBusy === 'complete' ? 'Settling…' : 'Complete & Settle Fare'}
                     </PrimaryButton>
                   )}
                   <PrimaryButton variant="danger" onClick={() => navigate('emergency_sos')}>
@@ -791,8 +787,14 @@ export const DashboardScreen: React.FC = () => {
                       {lastCompletedRide.pickup_address} → {lastCompletedRide.dropoff_address}
                     </p>
                     <p className="font-mono-num mt-0.5 text-xs text-neutral-600 dark:text-neutral-300">
-                      Fare ₹{(lastCompletedRide.final_fare_inr ?? lastCompletedRide.estimated_fare_inr).toFixed(0)} ·
-                      Net ₹{(lastCompletedRide.driver_net_inr ?? lastCompletedRide.estimated_fare_inr).toFixed(0)}
+                      Fare ₹
+                      {(
+                        lastCompletedRide.final_fare_inr ?? lastCompletedRide.estimated_fare_inr
+                      ).toFixed(0)}{' '}
+                      · Net ₹
+                      {(
+                        lastCompletedRide.driver_net_inr ?? lastCompletedRide.estimated_fare_inr
+                      ).toFixed(0)}
                     </p>
                   </div>
                   <button
@@ -817,8 +819,8 @@ export const DashboardScreen: React.FC = () => {
                 </p>
                 <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                   {backendConfigured
-                    ? 'Live ride offers arrive via Supabase Realtime when your account is approved and Online.'
-                    : 'Connect Supabase (VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY) to receive live customer rides and verify rider OTPs.'}
+                    ? 'Live ride offers arrive instantaneously via Firebase Firestore onSnapshot when your account is approved and Online.'
+                    : 'Connect Firebase Firestore in firebase-applet-config.json to receive live customer rides and verify rider OTPs.'}
                 </p>
               </div>
             )}
@@ -830,7 +832,7 @@ export const DashboardScreen: React.FC = () => {
             className="mt-4 flex flex-col gap-2.5 border-t border-neutral-200 pt-4 dark:border-neutral-800"
           >
             <div className="flex flex-1 items-center gap-2 rounded-xl border border-neutral-300 bg-[#F7F8FA] px-3 dark:border-neutral-700 dark:bg-[#1A1D23]">
-              <KeyRound className="h-4 w-4 shrink-0 text-[#FFC928]" />
+              <KeyRound className="h-4 w-4 shrink-0 text-[#F5C518]" />
               <input
                 type="text"
                 inputMode="numeric"
@@ -852,11 +854,21 @@ export const DashboardScreen: React.FC = () => {
             </PrimaryButton>
           </form>
         </section>
+
+        {/* Live Driver-Customer Firestore Chat during active ride */}
+        {activeRide && driverProfile && (
+          <RideChatDrawer
+            rideId={activeRide.ride_id}
+            driverId={driverProfile.driver_id}
+            driverName={driverProfile.full_name}
+            customerId={activeRide.customer_id}
+            customerName={activeRide.customer?.display_name}
+          />
+        )}
       </div>
 
-      {/* 4. RECENT TRIPS + VEHICLE DOCS & ALERT INBOX */}
+      {/* 4. RECENT TRIPS + ALERT INBOX */}
       <div className="space-y-4">
-        {/* Recent Trips Preview */}
         <section className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
           <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
             <div>
@@ -868,7 +880,7 @@ export const DashboardScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('ride_history')}
-              className="inline-flex min-h-[36px] items-center gap-1 text-xs font-bold text-[#111111] hover:underline dark:text-[#FFC928]"
+              className="inline-flex min-h-[36px] items-center gap-1 text-xs font-bold text-[#1E1E1E] hover:underline dark:text-[#F5C518]"
             >
               View All
               <ArrowUpRight className="h-3.5 w-3.5" />
@@ -880,7 +892,7 @@ export const DashboardScreen: React.FC = () => {
               <Car className="mx-auto h-6 w-6 text-neutral-400" />
               <p className="mt-2 text-xs font-semibold">No Completed Trips Yet</p>
               <p className="mt-0.5 text-[11px] text-neutral-500">
-                Settled customer rides from the shared database will list here automatically.
+                Settled customer rides from Cloud Firestore will list here automatically.
               </p>
             </div>
           ) : (
@@ -907,7 +919,6 @@ export const DashboardScreen: React.FC = () => {
           )}
         </section>
 
-        {/* Live Alerts & Notifications Preview */}
         <section className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
           <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
             <div>
@@ -919,7 +930,7 @@ export const DashboardScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('notifications')}
-              className="inline-flex min-h-[36px] items-center gap-1 text-xs font-bold text-[#111111] hover:underline dark:text-[#FFC928]"
+              className="inline-flex min-h-[36px] items-center gap-1 text-xs font-bold text-[#1E1E1E] hover:underline dark:text-[#F5C518]"
             >
               Inbox ({unreadNotifications})
               <ArrowUpRight className="h-3.5 w-3.5" />
@@ -944,7 +955,7 @@ export const DashboardScreen: React.FC = () => {
                     <p className="truncate text-[11px] text-neutral-500">{n.body}</p>
                   </div>
                   {!n.read && (
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#FFC928]" />
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#F5C518]" />
                   )}
                 </button>
               ))
@@ -957,7 +968,7 @@ export const DashboardScreen: React.FC = () => {
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#14161A]">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm font-bold">
-            <SlidersHorizontal className="h-4 w-4 text-[#FFC928]" />
+            <SlidersHorizontal className="h-4 w-4 text-[#F5C518]" />
             <span>Dispatch Rules</span>
           </div>
 
@@ -967,7 +978,7 @@ export const DashboardScreen: React.FC = () => {
                 type="checkbox"
                 checked={dispatchPreferences.acceptCashRides}
                 onChange={(e) => updateDispatchPreferences({ acceptCashRides: e.target.checked })}
-                className="h-4 w-4 accent-[#FFC928]"
+                className="h-4 w-4 accent-[#F5C518]"
               />
               <span>Accept Cash Rides</span>
             </label>
@@ -978,7 +989,7 @@ export const DashboardScreen: React.FC = () => {
                 onChange={(e) =>
                   updateDispatchPreferences({ autoAcceptEligible: e.target.checked })
                 }
-                className="h-4 w-4 accent-[#FFC928]"
+                className="h-4 w-4 accent-[#F5C518]"
               />
               <span>Auto-Accept Eligible</span>
             </label>
@@ -989,7 +1000,7 @@ export const DashboardScreen: React.FC = () => {
                 onChange={(e) =>
                   updateDispatchPreferences({ homewardFilterEnabled: e.target.checked })
                 }
-                className="h-4 w-4 accent-[#FFC928]"
+                className="h-4 w-4 accent-[#F5C518]"
               />
               <span>Homeward Filter</span>
             </label>
@@ -1002,11 +1013,10 @@ export const DashboardScreen: React.FC = () => {
             placeholder="Enter preferred return destination or hub"
             value={dispatchPreferences.homewardDestination}
             onChange={(e) => updateDispatchPreferences({ homewardDestination: e.target.value })}
-            className="mt-3 min-h-[42px] w-full rounded-xl border border-neutral-300 bg-[#F7F8FA] px-3.5 text-xs outline-none focus:border-[#FFC928] dark:border-neutral-700 dark:bg-[#1A1D23]"
+            className="mt-3 min-h-[42px] w-full rounded-xl border border-neutral-300 bg-[#F7F8FA] px-3.5 text-xs outline-none focus:border-[#F5C518] dark:border-neutral-700 dark:bg-[#1A1D23]"
           />
         )}
       </section>
-
     </div>
   );
 };
@@ -1019,7 +1029,7 @@ export const OnlineModeScreen: React.FC = () => {
     <div className="space-y-6">
       <ScreenHeader
         title="Online / Offline Duty Mode"
-        subtitle="Controlled strictly by backend verification and real GPS readiness"
+        subtitle="Controlled by Super Admin KYC readiness and live Firestore GPS streaming"
       />
 
       <OnlineToggle />
@@ -1105,15 +1115,14 @@ export const IncomingRideScreen: React.FC = () => {
     <div className="space-y-6">
       <ScreenHeader
         title="Incoming Ride Request"
-        subtitle="Real-time dispatch stream via Supabase Realtime"
+        subtitle="Real-time customer dispatch stream via Cloud Firestore"
       />
 
       {!backendConfigured ? (
         <StateNotice
           variant="unconfigured"
-          title="Realtime Ride Dispatch Requires Backend"
-          description="Incoming ride requests are pushed exclusively from the shared SHINE CAB Customer App through Supabase Realtime. No fake ride requests are generated."
-          missingEnvVars={['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']}
+          title="Realtime Ride Dispatch Requires Firebase"
+          description="Incoming ride requests sync live from the Customer App and Super Admin Panel through Cloud Firestore onSnapshot listeners."
         />
       ) : !incomingOffer ? (
         <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center dark:border-neutral-800 dark:bg-[#14161A]">
@@ -1121,19 +1130,19 @@ export const IncomingRideScreen: React.FC = () => {
           <h2 className="mt-3 font-display text-lg font-bold">No Active Ride Offers</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-neutral-500 dark:text-neutral-400">
             {driverProfile?.is_online
-              ? 'You are online and subscribed to offers matching your verified vehicle category.'
+              ? 'You are online and subscribed to live Firestore offers matching your verified vehicle category.'
               : 'Go Online after admin approval to receive real customer ride requests.'}
           </p>
         </div>
       ) : (
-        <div className="rounded-2xl border-2 border-[#FFC928] bg-white p-5 dark:bg-[#14161A]">
+        <div className="rounded-2xl border-2 border-[#F5C518] bg-white p-5 dark:bg-[#14161A]">
           <div className="flex items-center justify-between gap-2">
             <div>
               <span className="font-mono-num block text-xs font-semibold text-neutral-500">
                 Ride {incomingOffer.ride_id}
               </span>
               {secondsLeft !== null && (
-                <span className="font-mono-num mt-0.5 inline-flex items-center gap-1 text-xs font-bold text-amber-700 dark:text-[#FFC928]">
+                <span className="font-mono-num mt-0.5 inline-flex items-center gap-1 text-xs font-bold text-amber-700 dark:text-[#F5C518]">
                   <Clock className="h-3.5 w-3.5" />
                   Offer expires in {secondsLeft}s
                 </span>
@@ -1180,6 +1189,7 @@ export const RideAcceptDecisionScreen: React.FC = () => {
   const {
     backendConfigured,
     driverProfile,
+    vehicle,
     incomingOffer,
     setIncomingOffer,
     setActiveRide,
@@ -1193,14 +1203,15 @@ export const RideAcceptDecisionScreen: React.FC = () => {
       setFeedback({
         type: 'error',
         title: 'No Verified Offer',
-        message: 'Atomic ride acceptance requires a real backend ride offer and authenticated approved driver.',
+        message: 'Atomic ride acceptance requires a live ride offer and authenticated approved driver.',
       });
       return;
     }
     setSubmitting(true);
     const res = await driverBackendService.rides.acceptRide(
       incomingOffer.ride_id,
-      driverProfile.driver_id
+      driverProfile.driver_id,
+      vehicle?.vehicle_id
     );
     setSubmitting(false);
     if (!res.ok) {
@@ -1237,15 +1248,14 @@ export const RideAcceptDecisionScreen: React.FC = () => {
     <div className="space-y-6">
       <ScreenHeader
         title="Ride Accept / Reject"
-        subtitle="Atomic server lock prevents multiple drivers claiming the same ride"
+        subtitle="Atomic Firestore transaction prevents multiple captains claiming the same ride"
       />
 
       {!backendConfigured || !incomingOffer ? (
         <StateNotice
           variant={backendConfigured ? 'empty' : 'unconfigured'}
-          title={backendConfigured ? 'No Pending Offer Selected' : 'Atomic Dispatch Endpoint Unconfigured'}
-          description="Only real backend ride offers can be accepted via the accept-ride Edge Function (SQL accept_ride_atomic RPC)."
-          missingEnvVars={backendConfigured ? undefined : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']}
+          title={backendConfigured ? 'No Pending Offer Selected' : 'Firebase Dispatch Unconfigured'}
+          description="Only live customer ride offers from Firestore can be claimed via atomic transaction lock."
         />
       ) : (
         <div className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-[#14161A]">
@@ -1253,7 +1263,7 @@ export const RideAcceptDecisionScreen: React.FC = () => {
             Confirm atomic acceptance for Ride {incomingOffer.ride_id}
           </p>
           <p className="mt-1 text-xs text-neutral-500">
-            First valid driver confirmation wins; competing requests receive HTTP 409 Conflict.
+            First valid captain confirmation locks the ride in Firestore; other drivers see it unavailable immediately.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <PrimaryButton variant="brand" disabled={submitting} onClick={() => void handleAccept()}>
@@ -1272,7 +1282,7 @@ export const RideAcceptDecisionScreen: React.FC = () => {
         <div className="flex items-start gap-2.5">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" />
           <p>
-            Contract guarantee: Acceptance updates both Customer App and Driver App simultaneously
+            Contract guarantee: Acceptance updates both Customer App and Super Admin Panel simultaneously
             with shared driver_id, vehicle_id, and ride_id.
           </p>
         </div>

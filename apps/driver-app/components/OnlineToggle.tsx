@@ -17,17 +17,17 @@ export const OnlineToggle: React.FC<{ compact?: boolean }> = ({ compact = false 
       aria-pressed={isOnline}
       className={`group flex min-h-[52px] items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-left transition-all active:scale-[0.99] ${
         isOnline
-          ? 'border-[#111111] bg-[#111111] text-white dark:border-[#FFC928] dark:bg-[#FFC928] dark:text-[#111111]'
+          ? 'border-[#1E1E1E] bg-[#1E1E1E] text-white dark:border-[#F5C518] dark:bg-[#F5C518] dark:text-[#1E1E1E]'
           : canGoOnline
-          ? 'border-neutral-300 bg-white text-[#111111] hover:border-[#111111] dark:border-neutral-700 dark:bg-[#14161A] dark:text-white'
-          : 'border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-neutral-800 dark:bg-[#14161A] dark:text-neutral-300'
+          ? 'border-neutral-300 bg-white text-[#1E1E1E] hover:border-[#1E1E1E] dark:border-neutral-700 dark:bg-[#1E1E1E] dark:text-white'
+          : 'border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-neutral-800 dark:bg-[#1E1E1E] dark:text-neutral-300'
       } ${compact ? '' : 'w-full'}`}
     >
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex min-w-0 items-center gap-3">
         <span
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
             isOnline
-              ? 'bg-[#FFC928] text-[#111111] dark:bg-[#111111] dark:text-[#FFC928]'
+              ? 'bg-[#F5C518] text-[#1E1E1E] dark:bg-[#1E1E1E] dark:text-[#F5C518]'
               : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
           }`}
         >
@@ -48,12 +48,14 @@ export const OnlineToggle: React.FC<{ compact?: boolean }> = ({ compact = false 
               }`}
             >
               {!backendConfigured
-                ? 'Requires backend connection & admin approval'
+                ? 'Requires Firebase connection & admin approval'
+                : !driverProfile
+                ? 'Sign in with Google or OTP to check duty approval'
                 : !onlineEligibility.allowed
                 ? 'Locked until profile, KYC, and vehicle are approved'
                 : isOnline
-                ? 'Tap to pause ride offers'
-                : 'Tap to go online and receive ride requests'}
+                ? 'Streaming live GPS · Tap to pause ride offers'
+                : 'Tap to go online and receive live ride requests'}
             </p>
           )}
         </div>
@@ -62,7 +64,7 @@ export const OnlineToggle: React.FC<{ compact?: boolean }> = ({ compact = false 
       <span
         className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
           isOnline
-            ? 'bg-[#FFC928] text-[#111111] dark:bg-[#111111] dark:text-[#FFC928]'
+            ? 'bg-[#F5C518] text-[#1E1E1E] dark:bg-[#1E1E1E] dark:text-[#F5C518]'
             : 'bg-neutral-200 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'
         }`}
       >

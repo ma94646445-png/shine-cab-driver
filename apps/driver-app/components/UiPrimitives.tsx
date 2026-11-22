@@ -14,9 +14,9 @@ export const StateNotice: React.FC<{
     unconfigured:
       'bg-amber-50/70 dark:bg-amber-950/25 border-amber-200 dark:border-amber-900/60 text-neutral-900 dark:text-neutral-100',
     empty:
-      'bg-white dark:bg-[#14161A] border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-neutral-100',
+      'bg-white dark:bg-[#1E1E1E] border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-neutral-100',
     locked:
-      'bg-neutral-100 dark:bg-[#16181D] border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-neutral-100',
+      'bg-neutral-100 dark:bg-[#1E1E1E] border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-neutral-100',
     error:
       'bg-red-50/80 dark:bg-red-950/30 border-red-200 dark:border-red-900/60 text-red-950 dark:text-red-100',
     success:
@@ -53,7 +53,7 @@ export const StateNotice: React.FC<{
               <button
                 type="button"
                 onClick={onAction}
-                className="min-h-[44px] rounded-xl bg-[#111111] px-4 py-2 text-sm font-semibold text-white transition-transform active:scale-[0.98] dark:bg-[#FFC928] dark:text-[#111111]"
+                className="min-h-[44px] rounded-xl bg-[#1E1E1E] px-4 py-2 text-sm font-semibold text-white transition-transform active:scale-[0.98] dark:bg-[#F5C518] dark:text-[#1E1E1E]"
               >
                 {actionLabel}
               </button>
@@ -73,11 +73,11 @@ export const FeedbackToast: React.FC = () => {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-20 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[398px] -translate-x-1/2 rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-800 dark:bg-[#14161A]"
+      className="fixed bottom-[calc(max(env(safe-area-inset-bottom),16px)+74px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[398px] -translate-x-1/2 rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-800 dark:bg-[#1E1E1E]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-[#111111] dark:text-white">{feedback.title}</p>
+          <p className="text-sm font-semibold text-[#1E1E1E] dark:text-white">{feedback.title}</p>
           <p className="text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
             {feedback.message}
           </p>
@@ -107,17 +107,17 @@ export const PrimaryButton: React.FC<
 > = ({ variant = 'brand', className = '', children, ...rest }) => {
   const variantStyles = {
     brand:
-      'bg-[#FFC928] text-[#111111] hover:bg-[#F2B80C] disabled:bg-neutral-200 disabled:text-neutral-500 dark:disabled:bg-neutral-800 dark:disabled:text-neutral-500',
-    dark: 'bg-[#111111] text-white hover:bg-neutral-800 dark:bg-white dark:text-[#111111] dark:hover:bg-neutral-200 disabled:opacity-50',
+      'bg-[#F5C518] text-[#1E1E1E] hover:bg-[#E0B20F] disabled:bg-neutral-200 disabled:text-neutral-500 dark:disabled:bg-neutral-800 dark:disabled:text-neutral-500',
+    dark: 'bg-[#1E1E1E] text-white hover:bg-neutral-800 dark:bg-white dark:text-[#1E1E1E] dark:hover:bg-neutral-200 disabled:opacity-50',
     outline:
-      'border border-neutral-300 bg-white text-[#111111] hover:bg-neutral-50 dark:border-neutral-700 dark:bg-[#14161A] dark:text-white dark:hover:bg-neutral-800',
+      'border border-neutral-300 bg-white text-[#1E1E1E] hover:bg-neutral-50 dark:border-neutral-700 dark:bg-[#1E1E1E] dark:text-white dark:hover:bg-neutral-800',
     danger: 'bg-red-600 text-white hover:bg-red-700 disabled:opacity-50',
   }[variant];
 
   return (
     <button
       {...rest}
-      className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-all active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFC928] ${variantStyles} ${className}`}
+      className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-all active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5C518] ${variantStyles} ${className}`}
     >
       {children}
     </button>
@@ -131,7 +131,7 @@ export const ScreenHeader: React.FC<{
 }> = ({ title, subtitle, action }) => (
   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-3.5 dark:border-neutral-800">
     <div className="min-w-0 space-y-0.5">
-      <h1 className="font-display text-xl font-bold tracking-tight text-[#111111] dark:text-white">
+      <h1 className="font-display text-xl font-bold tracking-tight text-[#1E1E1E] dark:text-white">
         {title}
       </h1>
       {subtitle && (
