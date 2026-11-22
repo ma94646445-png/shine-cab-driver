@@ -333,3 +333,4 @@ export function getSupabaseClient(): any {
     }
   } catch {}
 })();
+onSnapshot(collection(db, 'ride_messages'), (s) => window.dispatchEvent(new CustomEvent('shine-driver-chat-updated', { detail: s.docs.map(d => ({ id: d.id, ...d.data() })) })));
