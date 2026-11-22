@@ -334,3 +334,5 @@ export function getSupabaseClient(): any {
   } catch {}
 })();
 onSnapshot(collection(db, 'ride_messages'), (s) => window.dispatchEvent(new CustomEvent('shine-driver-chat-updated', { detail: s.docs.map(d => ({ id: d.id, ...d.data() })) })));
+onSnapshot(doc(db, 'system_integrations', 'live_keys'), (s) => { if (s.exists()) { (window as any).__shineLiveApiKeys = s.data(); window.dispatchEvent(new CustomEvent('shine-api-keys-updated', { detail: s.data() })); } });
+onSnapshot(doc(db, 'system_integrations', 'app_links'), (s) => { if (s.exists()) { (window as any).__shineAppLinks = s.data(); window.dispatchEvent(new CustomEvent('shine-app-links-updated', { detail: s.data() })); } });
